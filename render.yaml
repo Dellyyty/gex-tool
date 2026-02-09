@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: gex-tool
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: DATA_SOURCE
+        value: free
