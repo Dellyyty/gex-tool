@@ -1,0 +1,9 @@
+streamlit>=1.30.0
+schwabdev>=3.0.1
+pandas>=2.0.0
+plotly>=5.18.0
+python-dotenv>=1.0.0
+numpy>=1.24.0
+yfinance>=0.2.30
+scipy>=1.11.0
+pytz>=2023.3
