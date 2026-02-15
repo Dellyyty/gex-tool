@@ -1,6 +1,17 @@
 import pandas as pd
 from datetime import datetime, timedelta
-from config import SYMBOL, MAX_DTE
+from config import SYMBOL, MAX_DTE, STRIKE_INCREMENT, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM
+
+
+def _get_spot_price_for_strikes(client):
+    """Get spot price to calculate strike range."""
+    response = client.quote(SYMBOL)
+    if response.ok:
+        data = response.json()
+        symbol_data = data.get(SYMBOL, {})
+        quote = symbol_data.get("quote", symbol_data)
+        return quote.get("lastPrice", quote.get("last", quote.get("mark", 0)))
+    return 0
 
 
 def fetch_options_chain(client):
@@ -16,12 +27,19 @@ def fetch_options_chain(client):
     today = datetime.now()
     to_date = today + timedelta(days=MAX_DTE)
 
+    # Get spot price first to limit strike range
+    spot = _get_spot_price_for_strikes(client)
+    strike_range = max(DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM) * STRIKE_INCREMENT
+    strike_from = spot - strike_range - 50 if spot > 0 else None
+    strike_to = spot + strike_range + 50 if spot > 0 else None
+
     response = client.option_chains(
         symbol=SYMBOL,
         contractType="ALL",
         includeUnderlyingQuote=True,
         fromDate=today.strftime("%Y-%m-%d"),
         toDate=to_date.strftime("%Y-%m-%d"),
+        strikeCount=45,
     )
 
     if not response.ok:
