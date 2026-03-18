@@ -28,3 +28,14 @@ MARKET_OPEN_HOUR = 9
 MARKET_OPEN_MINUTE = 30
 MARKET_CLOSE_HOUR = 16
 MARKET_CLOSE_MINUTE = 0
+
+# Close Direction Signal
+SIGNAL_WEIGHTS = {
+    "net_premium": 0.35,
+    "gex_magnet": 0.25,
+    "zero_dte_skew": 0.25,
+    "pc_ratio": 0.15,
+}
+SIGNAL_THRESHOLD = 0.3        # |score| > this = BUY/SELL
+ALERT_TIME_HOUR = 15          # 3:45 PM ET alert
+ALERT_TIME_MINUTE = 45

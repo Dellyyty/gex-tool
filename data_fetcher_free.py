@@ -75,6 +75,8 @@ def fetch_options_chain_free():
             put_iv = float(put_row["impliedVolatility"].iloc[0]) if not put_row.empty and pd.notna(put_row["impliedVolatility"].iloc[0]) else 0
             call_vol = int(call_row["volume"].iloc[0]) if not call_row.empty and pd.notna(call_row["volume"].iloc[0]) else 0
             put_vol = int(put_row["volume"].iloc[0]) if not put_row.empty and pd.notna(put_row["volume"].iloc[0]) else 0
+            call_mark = float(call_row["lastPrice"].iloc[0]) if not call_row.empty and pd.notna(call_row["lastPrice"].iloc[0]) else 0.0
+            put_mark = float(put_row["lastPrice"].iloc[0]) if not put_row.empty and pd.notna(put_row["lastPrice"].iloc[0]) else 0.0
 
             # Calculate gamma from Black-Scholes
             T = max(dte / 365.0, 1 / 365.0)  # time in years, min 1 day
@@ -97,6 +99,8 @@ def fetch_options_chain_free():
                 "put_delta": put_delta,
                 "call_volume": call_vol,
                 "put_volume": put_vol,
+                "call_mark": call_mark,
+                "put_mark": put_mark,
             })
 
     if not all_rows:

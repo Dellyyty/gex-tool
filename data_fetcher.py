@@ -67,22 +67,26 @@ def fetch_options_chain(client):
         options_df = puts.rename(columns={
             "openInterest": "put_OI", "gamma": "put_gamma",
             "delta": "put_delta", "volume": "put_volume",
+            "mark": "put_mark",
         })
-        options_df[["call_OI", "call_gamma", "call_delta", "call_volume"]] = 0
+        options_df[["call_OI", "call_gamma", "call_delta", "call_volume", "call_mark"]] = 0
     elif puts.empty:
         options_df = calls.rename(columns={
             "openInterest": "call_OI", "gamma": "call_gamma",
             "delta": "call_delta", "volume": "call_volume",
+            "mark": "call_mark",
         })
-        options_df[["put_OI", "put_gamma", "put_delta", "put_volume"]] = 0
+        options_df[["put_OI", "put_gamma", "put_delta", "put_volume", "put_mark"]] = 0
     else:
         calls = calls.rename(columns={
             "openInterest": "call_OI", "gamma": "call_gamma",
             "delta": "call_delta", "volume": "call_volume",
+            "mark": "call_mark",
         })
         puts = puts.rename(columns={
             "openInterest": "put_OI", "gamma": "put_gamma",
             "delta": "put_delta", "volume": "put_volume",
+            "mark": "put_mark",
         })
         options_df = pd.merge(
             calls, puts,
@@ -116,6 +120,7 @@ def _parse_exp_date_map(exp_date_map, option_type):
                     "gamma": contract.get("gamma", 0.0),
                     "delta": contract.get("delta", 0.0),
                     "volume": contract.get("totalVolume", 0),
+                    "mark": contract.get("mark", 0.0),
                 })
 
     if not rows:
@@ -123,7 +128,7 @@ def _parse_exp_date_map(exp_date_map, option_type):
 
     df = pd.DataFrame(rows)
     # Ensure numeric types
-    for col in ["strike", "openInterest", "gamma", "delta", "volume", "dte"]:
+    for col in ["strike", "openInterest", "gamma", "delta", "volume", "dte", "mark"]:
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
     return df

@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from datetime import datetime
+import pytz
 from gex_calculator import format_gex_value
 
 
@@ -353,9 +355,6 @@ def create_gex_bar_chart(gex_by_strike, spot_price, net_contracts=None):
 
 def market_status_html():
     """Return HTML badge for market open/closed status."""
-    from datetime import datetime
-    import pytz
-
     eastern = pytz.timezone("US/Eastern")
     now = datetime.now(eastern)
     weekday = now.weekday()
@@ -368,3 +367,226 @@ def market_status_html():
         return '<span style="background: #00c853; color: #000; padding: 4px 12px; border-radius: 4px; font-weight: bold;">MARKET OPEN</span>'
     else:
         return '<span style="background: #ff1744; color: #fff; padding: 4px 12px; border-radius: 4px; font-weight: bold;">MARKET CLOSED</span>'
+
+
+# --- Close Direction Signal UI ---
+
+def signal_badge_html(direction, confidence):
+    """Large BUY/SELL/NEUTRAL badge with confidence percentage."""
+    colors = {
+        "BUY": {"bg": "#00c853", "border": "#00e676", "text": "#000"},
+        "SELL": {"bg": "#ff1744", "border": "#ff5252", "text": "#fff"},
+        "NEUTRAL": {"bg": "#555", "border": "#777", "text": "#fff"},
+    }
+    c = colors.get(direction, colors["NEUTRAL"])
+    return f"""
+    <div style="text-align: center; margin: 20px 0;">
+        <div style="display: inline-block; background: {c['bg']}; border: 3px solid {c['border']};
+            border-radius: 16px; padding: 20px 50px; box-shadow: 0 0 30px {c['bg']}44;">
+            <div style="color: {c['text']}; font-size: 48px; font-weight: 900; letter-spacing: 4px;">{direction}</div>
+            <div style="color: {c['text']}; font-size: 18px; opacity: 0.85; margin-top: 4px;">
+                Confidence: {confidence:.0f}%
+            </div>
+        </div>
+    </div>
+    """
+
+
+def component_cards_html(components):
+    """Render 4 signal component cards in a row."""
+    icons = {
+        "net_premium": "$",
+        "gex_magnet": "M",
+        "zero_dte_skew": "0D",
+        "pc_ratio": "P/C",
+    }
+
+    cards_html = '<div style="display: flex; gap: 12px; margin: 16px 0;">'
+    for key, comp in components.items():
+        norm = comp["normalized"]
+        contrib = comp["contribution"]
+
+        # Color based on normalized value
+        if norm > 0.1:
+            bar_color = "#00c853"
+            val_color = "#00e676"
+        elif norm < -0.1:
+            bar_color = "#ff1744"
+            val_color = "#ff5252"
+        else:
+            bar_color = "#555"
+            val_color = "#aaa"
+
+        # Format the raw value for display
+        raw_val = comp["value"]
+        if key == "net_premium":
+            if abs(raw_val) >= 1_000_000:
+                display_val = f"${raw_val / 1_000_000:+,.1f}M"
+            elif abs(raw_val) >= 1_000:
+                display_val = f"${raw_val / 1_000:+,.0f}K"
+            else:
+                display_val = f"${raw_val:+,.0f}"
+        elif key == "gex_magnet":
+            display_val = f"{raw_val:+.0f} pts"
+        elif key == "zero_dte_skew":
+            display_val = f"{raw_val:.1%}"
+        elif key == "pc_ratio":
+            display_val = f"{raw_val:.2f}"
+        else:
+            display_val = f"{raw_val:.2f}"
+
+        # Bar width (0-100%) based on |normalized|
+        bar_width = min(abs(norm) * 100, 100)
+
+        cards_html += f"""
+        <div style="flex: 1; background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px;
+            padding: 14px; text-align: center;">
+            <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+                {icons.get(key, '')} {comp['label']}
+            </div>
+            <div style="color: {val_color}; font-size: 22px; font-weight: bold; margin: 6px 0;">
+                {display_val}
+            </div>
+            <div style="background: #1a1a2e; border-radius: 4px; height: 6px; margin: 6px 0; overflow: hidden;">
+                <div style="background: {bar_color}; width: {bar_width}%; height: 100%; border-radius: 4px;"></div>
+            </div>
+            <div style="color: #666; font-size: 11px;">
+                Weight: {comp['weight']:.0%} | Contrib: {contrib:+.3f}
+            </div>
+        </div>
+        """
+
+    cards_html += '</div>'
+    return cards_html
+
+
+def create_premium_flow_chart(premium_history):
+    """Plotly line chart of cumulative net premium flow over the session."""
+    if not premium_history:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Net Premium Flow",
+            plot_bgcolor="#0e1117", paper_bgcolor="#0e1117",
+            font=dict(color="#999"),
+            height=300,
+            annotations=[dict(text="Waiting for data...", x=0.5, y=0.5,
+                            xref="paper", yref="paper", showarrow=False,
+                            font=dict(color="#555", size=16))],
+        )
+        return fig
+
+    timestamps = [h[0] for h in premium_history]
+    values = [h[1] for h in premium_history]
+    # Scale to millions
+    values_m = [v / 1_000_000 for v in values]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=timestamps, y=values_m,
+        mode="lines+markers",
+        line=dict(color="#00b4d8", width=2),
+        marker=dict(size=4, color="#00b4d8"),
+        fill="tozeroy",
+        fillcolor="rgba(0, 180, 216, 0.1)",
+    ))
+
+    fig.add_hline(y=0, line_dash="dash", line_color="#555", line_width=1)
+
+    fig.update_layout(
+        title=dict(text="Net Premium Flow ($M)", font=dict(size=13, color="#999")),
+        plot_bgcolor="#0e1117", paper_bgcolor="#0e1117",
+        font=dict(color="#999", size=10),
+        xaxis=dict(gridcolor="#1a1a2e", tickformat="%H:%M"),
+        yaxis=dict(gridcolor="#1a1a2e", title="$M"),
+        height=300,
+        margin=dict(l=50, r=20, t=35, b=30),
+        showlegend=False,
+    )
+    return fig
+
+
+def create_signal_history_chart(signal_history):
+    """Plotly line chart of composite score over time."""
+    if not signal_history:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Composite Signal",
+            plot_bgcolor="#0e1117", paper_bgcolor="#0e1117",
+            font=dict(color="#999"),
+            height=300,
+            annotations=[dict(text="Waiting for data...", x=0.5, y=0.5,
+                            xref="paper", yref="paper", showarrow=False,
+                            font=dict(color="#555", size=16))],
+        )
+        return fig
+
+    timestamps = [h[0] for h in signal_history]
+    scores = [h[1] for h in signal_history]
+
+    # Color segments by sign
+    colors = ["#00c853" if s > 0 else "#ff1744" if s < 0 else "#555" for s in scores]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=timestamps, y=scores,
+        mode="lines+markers",
+        line=dict(color="#c0a0ff", width=2),
+        marker=dict(size=5, color=colors),
+    ))
+
+    # Threshold bands
+    from config import SIGNAL_THRESHOLD
+    fig.add_hline(y=SIGNAL_THRESHOLD, line_dash="dot", line_color="#00c85366", line_width=1,
+                  annotation_text="BUY", annotation_font_color="#00c853")
+    fig.add_hline(y=-SIGNAL_THRESHOLD, line_dash="dot", line_color="#ff174466", line_width=1,
+                  annotation_text="SELL", annotation_font_color="#ff1744")
+    fig.add_hline(y=0, line_dash="dash", line_color="#555", line_width=1)
+
+    fig.update_layout(
+        title=dict(text="Composite Signal Score", font=dict(size=13, color="#999")),
+        plot_bgcolor="#0e1117", paper_bgcolor="#0e1117",
+        font=dict(color="#999", size=10),
+        xaxis=dict(gridcolor="#1a1a2e", tickformat="%H:%M"),
+        yaxis=dict(gridcolor="#1a1a2e", range=[-1.1, 1.1], title="Score"),
+        height=300,
+        margin=dict(l=50, r=20, t=35, b=30),
+        showlegend=False,
+    )
+    return fig
+
+
+def close_alert_html():
+    """Alert banner for the 3:30-4:00 PM ET MOC trading window."""
+    eastern = pytz.timezone("US/Eastern")
+    now = datetime.now(eastern)
+    hour, minute = now.hour, now.minute
+
+    if not (15 <= hour <= 15 and 30 <= minute <= 59) and not (hour == 16 and minute == 0):
+        return ""
+
+    if 45 <= minute <= 55:
+        # Peak alert window
+        urgency = "ENTRY WINDOW"
+        bg = "linear-gradient(135deg, #ff6f00, #ff8f00)"
+        border_color = "#ffab00"
+        pulse = "animation: pulse 1.5s ease-in-out infinite;"
+    else:
+        urgency = "MOC WATCH"
+        bg = "linear-gradient(135deg, #1a237e, #283593)"
+        border_color = "#5c6bc0"
+        pulse = ""
+
+    return f"""
+    <style>
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.7; }}
+        }}
+    </style>
+    <div style="background: {bg}; border: 2px solid {border_color}; border-radius: 10px;
+        padding: 12px 20px; margin: 10px 0; text-align: center; {pulse}">
+        <span style="color: #fff; font-size: 16px; font-weight: bold; letter-spacing: 2px;">
+            {urgency} — {now.strftime('%H:%M')} ET
+        </span>
+    </div>
+    """
