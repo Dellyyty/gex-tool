@@ -22,7 +22,7 @@ from gex_calculator import calculate_gex
 from close_signal import calculate_close_signal
 from ui_components import (
     style_gex_table, create_gex_bar_chart, market_status_html,
-    signal_badge_html, component_cards_html,
+    signal_badge_html, single_card_html,
     create_premium_flow_chart, create_signal_history_chart, close_alert_html,
 )
 from config import (
@@ -234,11 +234,11 @@ with tab_signal:
         unsafe_allow_html=True,
     )
 
-    # Component cards
-    st.markdown(
-        component_cards_html(signal["components"]),
-        unsafe_allow_html=True,
-    )
+    # Component cards — one per column for reliable rendering
+    card_cols = st.columns(4)
+    for i, (key, comp) in enumerate(signal["components"].items()):
+        with card_cols[i]:
+            st.markdown(single_card_html(key, comp), unsafe_allow_html=True)
 
     # Charts side by side
     col_prem, col_sig = st.columns(2)

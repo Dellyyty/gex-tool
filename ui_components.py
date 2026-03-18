@@ -392,72 +392,55 @@ def signal_badge_html(direction, confidence):
     """
 
 
-def component_cards_html(components):
-    """Render 4 signal component cards in a row."""
+def single_card_html(key, comp):
+    """Render a single signal component card."""
     icons = {
         "net_premium": "$",
         "gex_magnet": "M",
         "zero_dte_skew": "0D",
         "pc_ratio": "P/C",
     }
+    norm = comp["normalized"]
+    contrib = comp["contribution"]
 
-    cards_html = '<div style="display: flex; gap: 12px; margin: 16px 0;">'
-    for key, comp in components.items():
-        norm = comp["normalized"]
-        contrib = comp["contribution"]
+    if norm > 0.1:
+        bar_color = "#00c853"
+        val_color = "#00e676"
+    elif norm < -0.1:
+        bar_color = "#ff1744"
+        val_color = "#ff5252"
+    else:
+        bar_color = "#555"
+        val_color = "#aaa"
 
-        # Color based on normalized value
-        if norm > 0.1:
-            bar_color = "#00c853"
-            val_color = "#00e676"
-        elif norm < -0.1:
-            bar_color = "#ff1744"
-            val_color = "#ff5252"
+    raw_val = comp["value"]
+    if key == "net_premium":
+        if abs(raw_val) >= 1_000_000:
+            display_val = f"${raw_val / 1_000_000:+,.1f}M"
+        elif abs(raw_val) >= 1_000:
+            display_val = f"${raw_val / 1_000:+,.0f}K"
         else:
-            bar_color = "#555"
-            val_color = "#aaa"
+            display_val = f"${raw_val:+,.0f}"
+    elif key == "gex_magnet":
+        display_val = f"{raw_val:+.0f} pts"
+    elif key == "zero_dte_skew":
+        display_val = f"{raw_val:.1%}"
+    elif key == "pc_ratio":
+        display_val = f"{raw_val:.2f}"
+    else:
+        display_val = f"{raw_val:.2f}"
 
-        # Format the raw value for display
-        raw_val = comp["value"]
-        if key == "net_premium":
-            if abs(raw_val) >= 1_000_000:
-                display_val = f"${raw_val / 1_000_000:+,.1f}M"
-            elif abs(raw_val) >= 1_000:
-                display_val = f"${raw_val / 1_000:+,.0f}K"
-            else:
-                display_val = f"${raw_val:+,.0f}"
-        elif key == "gex_magnet":
-            display_val = f"{raw_val:+.0f} pts"
-        elif key == "zero_dte_skew":
-            display_val = f"{raw_val:.1%}"
-        elif key == "pc_ratio":
-            display_val = f"{raw_val:.2f}"
-        else:
-            display_val = f"{raw_val:.2f}"
+    bar_width = min(abs(norm) * 100, 100)
 
-        # Bar width (0-100%) based on |normalized|
-        bar_width = min(abs(norm) * 100, 100)
-
-        cards_html += f"""
-        <div style="flex: 1; background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px;
-            padding: 14px; text-align: center;">
-            <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
-                {icons.get(key, '')} {comp['label']}
-            </div>
-            <div style="color: {val_color}; font-size: 22px; font-weight: bold; margin: 6px 0;">
-                {display_val}
-            </div>
-            <div style="background: #1a1a2e; border-radius: 4px; height: 6px; margin: 6px 0; overflow: hidden;">
-                <div style="background: {bar_color}; width: {bar_width}%; height: 100%; border-radius: 4px;"></div>
-            </div>
-            <div style="color: #666; font-size: 11px;">
-                Weight: {comp['weight']:.0%} | Contrib: {contrib:+.3f}
-            </div>
+    return f"""<div style="background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px;
+        padding: 14px; text-align: center;">
+        <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">{icons.get(key, '')} {comp['label']}</div>
+        <div style="color: {val_color}; font-size: 22px; font-weight: bold; margin: 6px 0;">{display_val}</div>
+        <div style="background: #1a1a2e; border-radius: 4px; height: 6px; margin: 6px 0; overflow: hidden;">
+            <div style="background: {bar_color}; width: {bar_width}%; height: 100%; border-radius: 4px;"></div>
         </div>
-        """
-
-    cards_html += '</div>'
-    return cards_html
+        <div style="color: #666; font-size: 11px;">Weight: {comp['weight']:.0%} | Contrib: {contrib:+.3f}</div>
+    </div>"""
 
 
 def create_premium_flow_chart(premium_history):
@@ -536,9 +519,9 @@ def create_signal_history_chart(signal_history):
 
     # Threshold bands
     from config import SIGNAL_THRESHOLD
-    fig.add_hline(y=SIGNAL_THRESHOLD, line_dash="dot", line_color="#00c85366", line_width=1,
+    fig.add_hline(y=SIGNAL_THRESHOLD, line_dash="dot", line_color="rgba(0,200,83,0.4)", line_width=1,
                   annotation_text="BUY", annotation_font_color="#00c853")
-    fig.add_hline(y=-SIGNAL_THRESHOLD, line_dash="dot", line_color="#ff174466", line_width=1,
+    fig.add_hline(y=-SIGNAL_THRESHOLD, line_dash="dot", line_color="rgba(255,23,68,0.4)", line_width=1,
                   annotation_text="SELL", annotation_font_color="#ff1744")
     fig.add_hline(y=0, line_dash="dash", line_color="#555", line_width=1)
 
