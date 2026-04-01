@@ -20,7 +20,7 @@ MAX_DTE = 65  # Maximum days to expiration to include
 AGGREGATE_DTE = 30  # DTE range for the aggregate column
 
 # Dashboard
-REFRESH_INTERVAL_SECONDS = 30
+REFRESH_INTERVAL_SECONDS = 20
 NUM_EXPIRY_COLUMNS = 5  # Show next N expiration dates as individual columns
 
 # Market hours (Eastern Time)
