@@ -59,6 +59,6 @@ SCANNER_GAMMA_DELTA_THRESHOLD = 0.04
 SCANNER_CONFIDENCE_THRESHOLD = 20.0
 
 SCANNER_WINDOWS = [
-    {"name": "Morning Reversal", "start_hour": 9, "start_min": 45, "end_hour": 10, "end_min": 15},
-    {"name": "Post-Lunch Flow", "start_hour": 12, "start_min": 45, "end_hour": 13, "end_min": 30},
+    {"name": "Morning Session", "start_hour": 10, "start_min": 0, "end_hour": 12, "end_min": 0},
+    {"name": "Afternoon Session", "start_hour": 13, "start_min": 0, "end_hour": 16, "end_min": 0},
 ]
