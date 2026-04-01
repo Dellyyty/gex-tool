@@ -573,3 +573,225 @@ def close_alert_html():
         </span>
     </div>
     """
+
+
+# --- Contract Scanner UI ---
+
+def scanner_alert_banner_html(scan_result):
+    """Pulsing alert banner when scanner triggers are active."""
+    if not scan_result["alert_active"]:
+        return ""
+
+    alert_type = scan_result["alert_type"]
+    direction = scan_result["direction"]
+
+    styles = {
+        "COMPOSITE": ("linear-gradient(135deg, #ff6f00, #e65100)", "#ffab00", "COMPOSITE ALERT"),
+        "VOLUME_SPIKE": ("linear-gradient(135deg, #1b5e20, #2e7d32)", "#66bb6a", "VOLUME SPIKE"),
+        "GAMMA_SETUP": ("linear-gradient(135deg, #4a148c, #6a1b9a)", "#ab47bc", "GAMMA SETUP"),
+        "TIME_WINDOW": ("linear-gradient(135deg, #0d47a1, #1565c0)", "#42a5f5", "TIME WINDOW"),
+    }
+    bg, border, label = styles.get(alert_type, styles["TIME_WINDOW"])
+    dir_color = "#00c853" if direction == "CALLS" else "#ff1744"
+    reasons = " | ".join(scan_result["alert_reasons"])
+
+    return f"""
+    <style>@keyframes scanner-pulse {{ 0%,100% {{ opacity:1; }} 50% {{ opacity:0.7; }} }}</style>
+    <div style="background:{bg}; border:2px solid {border}; border-radius:10px;
+        padding:14px 20px; margin:10px 0; text-align:center;
+        animation:scanner-pulse 1.5s ease-in-out infinite;">
+        <div style="color:#fff; font-size:18px; font-weight:bold; letter-spacing:2px;">
+            {label} — <span style="color:{dir_color};">{direction}</span></div>
+        <div style="color:rgba(255,255,255,0.7); font-size:12px; margin-top:6px;">{reasons}</div>
+    </div>"""
+
+
+def scanner_direction_card_html(scan_result):
+    """Big SCANNING CALLS/PUTS badge."""
+    direction = scan_result["direction"]
+    reason = scan_result["direction_reason"]
+
+    if direction == "CALLS":
+        bg, border, tc = "#00c853", "#00e676", "#000"
+    else:
+        bg, border, tc = "#ff1744", "#ff5252", "#fff"
+
+    return f"""
+    <div style="text-align:center; margin:16px 0;">
+        <div style="display:inline-block; background:{bg}; border:3px solid {border};
+            border-radius:16px; padding:16px 40px; box-shadow:0 0 20px {bg}44;">
+            <div style="color:{tc}; font-size:36px; font-weight:900; letter-spacing:3px;">
+                SCANNING {direction}</div>
+            <div style="color:{tc}; font-size:13px; opacity:0.85; margin-top:4px;">{reason}</div>
+        </div>
+    </div>"""
+
+
+def scanner_timing_html(timing_window):
+    """Timing window status indicator."""
+    eastern = pytz.timezone("US/Eastern")
+    now = datetime.now(eastern)
+    time_str = now.strftime("%H:%M ET")
+
+    if timing_window:
+        return f"""
+        <div style="background:linear-gradient(135deg,#1a237e,#283593);
+            border:2px solid #5c6bc0; border-radius:8px; padding:10px;
+            text-align:center; margin:8px 0;">
+            <span style="color:#90caf9; font-size:11px; text-transform:uppercase;
+                letter-spacing:2px;">ACTIVE WINDOW</span>
+            <div style="color:#fff; font-size:18px; font-weight:bold; margin:4px 0;">
+                {timing_window['name']}</div>
+            <div style="color:#90caf9; font-size:12px;">
+                {timing_window['start']} - {timing_window['end']} ET (Now: {time_str})</div>
+        </div>"""
+    else:
+        return f"""
+        <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:8px;
+            padding:10px; text-align:center; margin:8px 0;">
+            <span style="color:#555; font-size:11px; text-transform:uppercase;
+                letter-spacing:2px;">NO ACTIVE WINDOW</span>
+            <div style="color:#888; font-size:13px; margin-top:4px;">
+                Next: 9:45 AM or 12:45 PM ET | Now: {time_str}</div>
+        </div>"""
+
+
+def scanner_summary_cards_html(scan_result):
+    """Summary metric cards for scanner tab."""
+    summary = scan_result["scan_summary"]
+    contracts = scan_result["contracts"]
+    top_score = contracts[0]["score"] if contracts else 0
+    top_strike = contracts[0]["strike"] if contracts else 0
+    top_mark = contracts[0]["mark"] if contracts else 0
+
+    cards = [
+        ("Top Contract", f"{top_strike:,.0f}" if top_strike else "--",
+         f"${top_mark:.2f}" if top_mark else "", "#fff"),
+        ("Top Score", f"{top_score:.0f}",
+         "of 100", "#00c853" if top_score >= 70 else "#ffc107" if top_score >= 50 else "#ff5252"),
+        ("Candidates", str(summary.get("in_price_range", 0)),
+         f"of {summary.get('total_0dte', 0)} 0DTE", "#90caf9"),
+        ("Price Range", summary.get("price_range", ""),
+         "target: $400-$550", "#aaa"),
+    ]
+
+    html = '<div style="display:flex; gap:10px; margin:12px 0;">'
+    for label, value, sub, color in cards:
+        html += f"""<div style="flex:1; background:#16213e; border:1px solid #2a2a4a;
+            border-radius:10px; padding:12px; text-align:center;">
+            <div style="color:#666; font-size:10px; text-transform:uppercase;
+                letter-spacing:2px;">{label}</div>
+            <div style="color:{color}; font-size:22px; font-weight:bold; margin:4px 0;">
+                {value}</div>
+            <div style="color:#555; font-size:11px;">{sub}</div>
+        </div>"""
+    html += '</div>'
+    return html
+
+
+def scanner_contracts_table_html(contracts, direction):
+    """Styled table of scored contracts."""
+    from config import SCANNER_GAMMA_DELTA_THRESHOLD
+
+    if not contracts:
+        return """<div style="background:#16213e; border:1px solid #2a2a4a;
+            border-radius:10px; padding:30px; text-align:center; margin:16px 0;">
+            <div style="color:#888; font-size:16px;">No contracts in price range for 0DTE</div>
+            <div style="color:#555; font-size:12px; margin-top:8px;">
+                Market may be closed or no 0DTE contracts available</div>
+        </div>"""
+
+    hc = "#00c853" if direction == "CALLS" else "#ff1744"
+
+    html = f"""
+    <style>
+    .scanner-table {{ border-collapse:collapse; width:100%;
+        font-family:'Consolas','Courier New',monospace; font-size:13px; }}
+    .scanner-table th {{ background:#1a1a2e; color:{hc}; padding:10px 12px;
+        text-align:center; border-bottom:2px solid {hc}44;
+        font-size:11px; text-transform:uppercase; letter-spacing:1px; }}
+    .scanner-table td {{ padding:8px 12px; text-align:right;
+        border-bottom:1px solid rgba(255,255,255,0.05); white-space:nowrap; }}
+    .scanner-table tr:hover td {{ filter:brightness(1.2); }}
+    </style>
+    <table class="scanner-table">
+    <thead><tr>
+        <th>#</th><th>Strike</th><th>Mark</th><th>Bid/Ask</th>
+        <th>Delta</th><th>Gamma</th><th>G/D Ratio</th>
+        <th>Vol</th><th>OI</th><th>Vol/OI</th>
+        <th>IV</th><th>Score</th>
+    </tr></thead><tbody>"""
+
+    for i, c in enumerate(contracts):
+        rank = i + 1
+        score = c["score"]
+        if score >= 70:
+            sc_bg, sc_c = "rgba(0,200,83,0.25)", "#00c853"
+        elif score >= 50:
+            sc_bg, sc_c = "rgba(255,193,7,0.2)", "#ffc107"
+        else:
+            sc_bg, sc_c = "rgba(255,23,68,0.15)", "#ff5252"
+
+        row_bg = "rgba(255,255,255,0.03)" if rank == 1 else "transparent"
+        gd = c["gamma_delta_ratio"]
+        gd_color = "#00e676" if gd > SCANNER_GAMMA_DELTA_THRESHOLD else "#aaa"
+        vol_color = "#ffab00" if c["volume"] > c.get("avg_volume", 0) * 2 else "#aaa"
+
+        html += f"""<tr style="background:{row_bg};">
+            <td style="color:{sc_c}; font-size:18px; font-weight:bold; text-align:center;">{rank}</td>
+            <td style="color:#fff; font-weight:bold; text-align:center;">{c['strike']:,.0f}</td>
+            <td style="color:#fff;">${c['mark']:.2f}</td>
+            <td style="color:#aaa; font-size:11px;">${c['bid']:.2f}/${c['ask']:.2f}</td>
+            <td style="color:#aaa;">{c['delta']:.3f}</td>
+            <td style="color:#aaa;">{c['gamma']:.4f}</td>
+            <td style="color:{gd_color};">{gd:.4f}</td>
+            <td style="color:{vol_color};">{c['volume']:,}</td>
+            <td style="color:#666;">{c['oi']:,}</td>
+            <td style="color:#aaa;">{c['vol_oi_ratio']:.2f}</td>
+            <td style="color:#aaa;">{c['iv']:.1%}</td>
+            <td style="background:{sc_bg}; color:{sc_c}; font-weight:bold;
+                font-size:16px; text-align:center;">{score:.0f}</td>
+        </tr>"""
+
+    html += "</tbody></table>"
+    return html
+
+
+def scanner_score_breakdown_html(contract):
+    """Score breakdown bars for top contract."""
+    if not contract or "score_components" not in contract:
+        return ""
+
+    components = contract["score_components"]
+    labels = {
+        "gamma_accel": ("Gamma Accel", "30%"),
+        "volume_activity": ("Volume", "25%"),
+        "spread_tight": ("Spread", "20%"),
+        "iv_room": ("IV Room", "15%"),
+        "distance_otm": ("OTM Dist", "10%"),
+    }
+
+    cards = ""
+    for key, (label, weight) in labels.items():
+        val = components.get(key, 0)
+        if val >= 70:
+            bar_c, val_c = "#00c853", "#00e676"
+        elif val >= 40:
+            bar_c, val_c = "#ffc107", "#ffca28"
+        else:
+            bar_c, val_c = "#ff1744", "#ff5252"
+
+        cards += f"""<div style="flex:1; min-width:100px; background:#16213e;
+            border:1px solid #2a2a4a; border-radius:8px; padding:10px; text-align:center;">
+            <div style="color:#666; font-size:10px; text-transform:uppercase;
+                letter-spacing:1px;">{label}</div>
+            <div style="color:{val_c}; font-size:20px; font-weight:bold; margin:4px 0;">
+                {val:.0f}</div>
+            <div style="background:#1a1a2e; border-radius:3px; height:5px;
+                margin:4px 0; overflow:hidden;">
+                <div style="background:{bar_c}; width:{min(val,100)}%;
+                    height:100%; border-radius:3px;"></div></div>
+            <div style="color:#555; font-size:10px;">Weight: {weight}</div>
+        </div>"""
+
+    return f'<div style="display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;">{cards}</div>'

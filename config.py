@@ -39,3 +39,26 @@ SIGNAL_WEIGHTS = {
 SIGNAL_THRESHOLD = 0.3        # |score| > this = BUY/SELL
 ALERT_TIME_HOUR = 15          # 3:45 PM ET alert
 ALERT_TIME_MINUTE = 45
+
+# Contract Scanner
+SCANNER_PRICE_MIN = 4.00        # Min contract mark price ($)
+SCANNER_PRICE_MAX = 5.50        # Max contract mark price ($)
+SCANNER_MAX_DTE = 0             # Only 0DTE contracts
+SCANNER_TOP_N = 5               # Show top N scored contracts
+
+SCANNER_WEIGHTS = {
+    "gamma_accel": 0.30,         # gamma/delta ratio (acceleration potential)
+    "volume_activity": 0.25,     # volume/OI ratio (smart money signal)
+    "spread_tight": 0.20,       # bid-ask tightness (execution quality)
+    "iv_room": 0.15,            # low IV = room for vega expansion
+    "distance_otm": 0.10,       # slightly OTM preferred
+}
+
+SCANNER_VOLUME_SPIKE_MULTIPLIER = 2.0
+SCANNER_GAMMA_DELTA_THRESHOLD = 0.04
+SCANNER_CONFIDENCE_THRESHOLD = 20.0
+
+SCANNER_WINDOWS = [
+    {"name": "Morning Reversal", "start_hour": 9, "start_min": 45, "end_hour": 10, "end_min": 15},
+    {"name": "Post-Lunch Flow", "start_hour": 12, "start_min": 45, "end_hour": 13, "end_min": 30},
+]

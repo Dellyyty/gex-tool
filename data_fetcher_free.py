@@ -77,15 +77,23 @@ def fetch_options_chain_free():
             put_vol = int(put_row["volume"].iloc[0]) if not put_row.empty and pd.notna(put_row["volume"].iloc[0]) else 0
             call_mark = float(call_row["lastPrice"].iloc[0]) if not call_row.empty and pd.notna(call_row["lastPrice"].iloc[0]) else 0.0
             put_mark = float(put_row["lastPrice"].iloc[0]) if not put_row.empty and pd.notna(put_row["lastPrice"].iloc[0]) else 0.0
+            call_bid = float(call_row["bid"].iloc[0]) if not call_row.empty and pd.notna(call_row["bid"].iloc[0]) else 0.0
+            put_bid = float(put_row["bid"].iloc[0]) if not put_row.empty and pd.notna(put_row["bid"].iloc[0]) else 0.0
+            call_ask = float(call_row["ask"].iloc[0]) if not call_row.empty and pd.notna(call_row["ask"].iloc[0]) else 0.0
+            put_ask = float(put_row["ask"].iloc[0]) if not put_row.empty and pd.notna(put_row["ask"].iloc[0]) else 0.0
 
             # Calculate gamma from Black-Scholes
             T = max(dte / 365.0, 1 / 365.0)  # time in years, min 1 day
             call_gamma = _bs_gamma(spot_price, strike, T, call_iv) if call_iv > 0 else 0
             put_gamma = _bs_gamma(spot_price, strike, T, put_iv) if put_iv > 0 else 0
 
-            # Calculate delta too
+            # Calculate delta and theta/vega
             call_delta = _bs_delta(spot_price, strike, T, call_iv, "call") if call_iv > 0 else 0
             put_delta = _bs_delta(spot_price, strike, T, put_iv, "put") if put_iv > 0 else 0
+            call_theta_val = _bs_theta(spot_price, strike, T, call_iv, "call") if call_iv > 0 else 0
+            put_theta_val = _bs_theta(spot_price, strike, T, put_iv, "put") if put_iv > 0 else 0
+            call_vega_val = _bs_vega(spot_price, strike, T, call_iv) if call_iv > 0 else 0
+            put_vega_val = _bs_vega(spot_price, strike, T, put_iv) if put_iv > 0 else 0
 
             all_rows.append({
                 "strike": strike,
@@ -101,6 +109,16 @@ def fetch_options_chain_free():
                 "put_volume": put_vol,
                 "call_mark": call_mark,
                 "put_mark": put_mark,
+                "call_bid": call_bid,
+                "put_bid": put_bid,
+                "call_ask": call_ask,
+                "put_ask": put_ask,
+                "call_theta": call_theta_val,
+                "put_theta": put_theta_val,
+                "call_vega": call_vega_val,
+                "put_vega": put_vega_val,
+                "call_iv": call_iv,
+                "put_iv": put_iv,
             })
 
     if not all_rows:
@@ -134,16 +152,7 @@ def _bs_gamma(S, K, T, sigma, r=0.05):
 
 
 def _bs_delta(S, K, T, sigma, option_type, r=0.05):
-    """Calculate Black-Scholes delta.
-
-    Args:
-        S: spot price
-        K: strike price
-        T: time to expiry in years
-        sigma: implied volatility
-        option_type: "call" or "put"
-        r: risk-free rate
-    """
+    """Calculate Black-Scholes delta."""
     if sigma <= 0 or T <= 0 or S <= 0:
         return 0.0
     try:
@@ -152,5 +161,33 @@ def _bs_delta(S, K, T, sigma, option_type, r=0.05):
             return norm.cdf(d1)
         else:
             return norm.cdf(d1) - 1
+    except (ZeroDivisionError, ValueError):
+        return 0.0
+
+
+def _bs_theta(S, K, T, sigma, option_type, r=0.05):
+    """Calculate Black-Scholes theta (daily)."""
+    if sigma <= 0 or T <= 0 or S <= 0:
+        return 0.0
+    try:
+        d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+        d2 = d1 - sigma * np.sqrt(T)
+        common = -(S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T))
+        if option_type == "call":
+            theta = common - r * K * np.exp(-r * T) * norm.cdf(d2)
+        else:
+            theta = common + r * K * np.exp(-r * T) * norm.cdf(-d2)
+        return theta / 365
+    except (ZeroDivisionError, ValueError):
+        return 0.0
+
+
+def _bs_vega(S, K, T, sigma, r=0.05):
+    """Calculate Black-Scholes vega (per 1% IV move)."""
+    if sigma <= 0 or T <= 0 or S <= 0:
+        return 0.0
+    try:
+        d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+        return S * norm.pdf(d1) * np.sqrt(T) / 100
     except (ZeroDivisionError, ValueError):
         return 0.0

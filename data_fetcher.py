@@ -67,26 +67,38 @@ def fetch_options_chain(client):
         options_df = puts.rename(columns={
             "openInterest": "put_OI", "gamma": "put_gamma",
             "delta": "put_delta", "volume": "put_volume",
-            "mark": "put_mark",
+            "mark": "put_mark", "bid": "put_bid", "ask": "put_ask",
+            "theta": "put_theta", "vega": "put_vega",
+            "impliedVolatility": "put_iv",
         })
-        options_df[["call_OI", "call_gamma", "call_delta", "call_volume", "call_mark"]] = 0
+        options_df[["call_OI", "call_gamma", "call_delta", "call_volume",
+                     "call_mark", "call_bid", "call_ask", "call_theta",
+                     "call_vega", "call_iv"]] = 0
     elif puts.empty:
         options_df = calls.rename(columns={
             "openInterest": "call_OI", "gamma": "call_gamma",
             "delta": "call_delta", "volume": "call_volume",
-            "mark": "call_mark",
+            "mark": "call_mark", "bid": "call_bid", "ask": "call_ask",
+            "theta": "call_theta", "vega": "call_vega",
+            "impliedVolatility": "call_iv",
         })
-        options_df[["put_OI", "put_gamma", "put_delta", "put_volume", "put_mark"]] = 0
+        options_df[["put_OI", "put_gamma", "put_delta", "put_volume",
+                     "put_mark", "put_bid", "put_ask", "put_theta",
+                     "put_vega", "put_iv"]] = 0
     else:
         calls = calls.rename(columns={
             "openInterest": "call_OI", "gamma": "call_gamma",
             "delta": "call_delta", "volume": "call_volume",
-            "mark": "call_mark",
+            "mark": "call_mark", "bid": "call_bid", "ask": "call_ask",
+            "theta": "call_theta", "vega": "call_vega",
+            "impliedVolatility": "call_iv",
         })
         puts = puts.rename(columns={
             "openInterest": "put_OI", "gamma": "put_gamma",
             "delta": "put_delta", "volume": "put_volume",
-            "mark": "put_mark",
+            "mark": "put_mark", "bid": "put_bid", "ask": "put_ask",
+            "theta": "put_theta", "vega": "put_vega",
+            "impliedVolatility": "put_iv",
         })
         options_df = pd.merge(
             calls, puts,
@@ -121,6 +133,11 @@ def _parse_exp_date_map(exp_date_map, option_type):
                     "delta": contract.get("delta", 0.0),
                     "volume": contract.get("totalVolume", 0),
                     "mark": contract.get("mark", 0.0),
+                    "bid": contract.get("bid", 0.0),
+                    "ask": contract.get("ask", 0.0),
+                    "theta": contract.get("theta", 0.0),
+                    "vega": contract.get("vega", 0.0),
+                    "impliedVolatility": contract.get("impliedVolatility", 0.0),
                 })
 
     if not rows:
@@ -128,7 +145,8 @@ def _parse_exp_date_map(exp_date_map, option_type):
 
     df = pd.DataFrame(rows)
     # Ensure numeric types
-    for col in ["strike", "openInterest", "gamma", "delta", "volume", "dte", "mark"]:
+    for col in ["strike", "openInterest", "gamma", "delta", "volume", "dte", "mark",
+                "bid", "ask", "theta", "vega", "impliedVolatility"]:
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
     return df

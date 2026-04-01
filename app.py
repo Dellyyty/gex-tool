@@ -20,10 +20,14 @@ st.markdown("""
 
 from gex_calculator import calculate_gex
 from close_signal import calculate_close_signal
+from contract_scanner import scan_contracts
 from ui_components import (
     style_gex_table, create_gex_bar_chart, market_status_html,
     signal_badge_html, single_card_html,
     create_premium_flow_chart, create_signal_history_chart, close_alert_html,
+    scanner_alert_banner_html, scanner_direction_card_html,
+    scanner_timing_html, scanner_contracts_table_html,
+    scanner_score_breakdown_html, scanner_summary_cards_html,
 )
 from config import (
     DATA_SOURCE, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM,
@@ -43,7 +47,6 @@ eastern = pytz.timezone("US/Eastern")
 now_et = datetime.now(eastern)
 today_str = now_et.strftime("%Y-%m-%d")
 if st.session_state.last_reset_date != today_str:
-    # Check if it's after market open (9:30 ET)
     market_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
     if now_et >= market_open:
         st.session_state.signal_history = []
@@ -179,8 +182,25 @@ if gex_table.empty:
     st.warning("No GEX data to display for the selected range.")
     st.stop()
 
+# --- Calculate close signal BEFORE tabs (shared by Close Direction + Scanner) ---
+signal = calculate_close_signal(options_df, spot_price, gex_by_strike)
+
+now_ts = datetime.now()
+st.session_state.signal_history.append(
+    (now_ts, signal["composite_score"], signal["components"])
+)
+st.session_state.premium_history.append(
+    (now_ts, signal["net_premium"])
+)
+if len(st.session_state.signal_history) > 500:
+    st.session_state.signal_history = st.session_state.signal_history[-500:]
+if len(st.session_state.premium_history) > 500:
+    st.session_state.premium_history = st.session_state.premium_history[-500:]
+
 # === TABBED LAYOUT ===
-tab_gex, tab_signal = st.tabs(["GEX Dashboard", "Close Direction"])
+tab_gex, tab_signal, tab_scanner = st.tabs([
+    "GEX Dashboard", "Close Direction", "Contract Scanner"
+])
 
 # --- GEX Dashboard Tab (original content) ---
 with tab_gex:
@@ -196,24 +216,6 @@ with tab_gex:
 
 # --- Close Direction Tab ---
 with tab_signal:
-    # Calculate signal using full options_df (not filtered)
-    signal = calculate_close_signal(options_df, spot_price, gex_by_strike)
-
-    # Track history
-    now_ts = datetime.now()
-    st.session_state.signal_history.append(
-        (now_ts, signal["composite_score"], signal["components"])
-    )
-    st.session_state.premium_history.append(
-        (now_ts, signal["net_premium"])
-    )
-
-    # Cap history length (keep last 500 data points)
-    if len(st.session_state.signal_history) > 500:
-        st.session_state.signal_history = st.session_state.signal_history[-500:]
-    if len(st.session_state.premium_history) > 500:
-        st.session_state.premium_history = st.session_state.premium_history[-500:]
-
     # 3:45 PM alert banner
     alert = close_alert_html()
     if alert:
@@ -251,13 +253,59 @@ with tab_signal:
         fig_sig = create_signal_history_chart(st.session_state.signal_history)
         st.plotly_chart(fig_sig, use_container_width=True)
 
-    # Data point count
     n_points = len(st.session_state.signal_history)
     st.markdown(
         f'<div style="text-align:center; color:#555; font-size:11px;">'
         f'{n_points} data point{"s" if n_points != 1 else ""} this session</div>',
         unsafe_allow_html=True,
     )
+
+# --- Contract Scanner Tab ---
+with tab_scanner:
+    scan_result = scan_contracts(options_df, spot_price, signal)
+
+    # Alert banner (if active)
+    alert_html = scanner_alert_banner_html(scan_result)
+    if alert_html:
+        st.markdown(alert_html, unsafe_allow_html=True)
+
+    # Direction badge
+    st.markdown(scanner_direction_card_html(scan_result), unsafe_allow_html=True)
+
+    # Timing window + summary cards
+    col_timing, col_summary = st.columns([1, 3])
+    with col_timing:
+        st.markdown(scanner_timing_html(scan_result["timing_window"]), unsafe_allow_html=True)
+    with col_summary:
+        st.markdown(scanner_summary_cards_html(scan_result), unsafe_allow_html=True)
+
+    # Contracts table
+    st.markdown(
+        scanner_contracts_table_html(scan_result["contracts"], scan_result["direction"]),
+        unsafe_allow_html=True,
+    )
+
+    # Score breakdown for top contract
+    if scan_result["contracts"]:
+        st.markdown(
+            '<div style="color:#888; font-size:12px; margin-top:16px; '
+            'text-transform:uppercase; letter-spacing:2px;">'
+            'Score Breakdown — Top Contract</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            scanner_score_breakdown_html(scan_result["contracts"][0]),
+            unsafe_allow_html=True,
+        )
+
+    # Alert reasons
+    if scan_result["alert_reasons"]:
+        reasons_text = " | ".join(scan_result["alert_reasons"])
+        st.markdown(
+            f'<div style="color:#555; font-size:11px; text-align:center; '
+            f'margin-top:12px;">Triggers: {reasons_text}</div>',
+            unsafe_allow_html=True,
+        )
 
 # Auto-refresh logic
 if auto_refresh:
