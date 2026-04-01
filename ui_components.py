@@ -705,36 +705,41 @@ def scanner_summary_cards_html(scan_result):
 
 
 def scanner_contracts_table_html(contracts, direction):
-    """Styled table of scored contracts."""
+    """Styled table of scored contracts — compact for side-by-side layout."""
     from config import SCANNER_GAMMA_DELTA_THRESHOLD
 
+    dir_label = "CALLS" if direction == "CALLS" else "PUTS"
+    hc = "#00c853" if direction == "CALLS" else "#ff1744"
+
     if not contracts:
-        return """<div style="background:#16213e; border:1px solid #2a2a4a;
-            border-radius:10px; padding:30px; text-align:center; margin:16px 0;">
-            <div style="color:#888; font-size:16px;">No contracts in price range for 0DTE</div>
-            <div style="color:#555; font-size:12px; margin-top:8px;">
-                Market may be closed or no 0DTE contracts available</div>
+        return f"""<div style="background:#16213e; border:1px solid #2a2a4a;
+            border-radius:10px; padding:20px; text-align:center; margin:8px 0;">
+            <div style="color:{hc}; font-size:13px; font-weight:bold;
+                text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">
+                {dir_label}</div>
+            <div style="color:#888; font-size:13px;">No 0DTE contracts in range</div>
         </div>"""
 
-    hc = "#00c853" if direction == "CALLS" else "#ff1744"
+    # Use unique class name per direction to avoid CSS collisions
+    cls = f"sc-{direction.lower()}"
 
     html = f"""
     <style>
-    .scanner-table {{ border-collapse:collapse; width:100%;
-        font-family:'Consolas','Courier New',monospace; font-size:13px; }}
-    .scanner-table th {{ background:#1a1a2e; color:{hc}; padding:10px 12px;
+    .{cls} {{ border-collapse:collapse; width:100%;
+        font-family:'Consolas','Courier New',monospace; font-size:12px; }}
+    .{cls} th {{ background:#1a1a2e; color:{hc}; padding:6px 6px;
         text-align:center; border-bottom:2px solid {hc}44;
-        font-size:11px; text-transform:uppercase; letter-spacing:1px; }}
-    .scanner-table td {{ padding:8px 12px; text-align:right;
+        font-size:10px; text-transform:uppercase; letter-spacing:1px; }}
+    .{cls} td {{ padding:5px 6px; text-align:right;
         border-bottom:1px solid rgba(255,255,255,0.05); white-space:nowrap; }}
-    .scanner-table tr:hover td {{ filter:brightness(1.2); }}
+    .{cls} tr:hover td {{ filter:brightness(1.2); }}
     </style>
-    <table class="scanner-table">
+    <div style="color:{hc}; font-size:13px; font-weight:bold; text-transform:uppercase;
+        letter-spacing:2px; text-align:center; margin:8px 0 4px;">{dir_label}</div>
+    <table class="{cls}">
     <thead><tr>
-        <th>#</th><th>Strike</th><th>Mark</th><th>Bid/Ask</th>
-        <th>Delta</th><th>Gamma</th><th>G/D Ratio</th>
-        <th>Vol</th><th>OI</th><th>Vol/OI</th>
-        <th>IV</th><th>Score</th>
+        <th>Strike</th><th>Mark</th><th>G/D</th>
+        <th>Vol</th><th>IV</th><th>Score</th>
     </tr></thead><tbody>"""
 
     for i, c in enumerate(contracts):
@@ -753,19 +758,13 @@ def scanner_contracts_table_html(contracts, direction):
         vol_color = "#ffab00" if c["volume"] > c.get("avg_volume", 0) * 2 else "#aaa"
 
         html += f"""<tr style="background:{row_bg};">
-            <td style="color:{sc_c}; font-size:18px; font-weight:bold; text-align:center;">{rank}</td>
             <td style="color:#fff; font-weight:bold; text-align:center;">{c['strike']:,.0f}</td>
             <td style="color:#fff;">${c['mark']:.2f}</td>
-            <td style="color:#aaa; font-size:11px;">${c['bid']:.2f}/${c['ask']:.2f}</td>
-            <td style="color:#aaa;">{c['delta']:.3f}</td>
-            <td style="color:#aaa;">{c['gamma']:.4f}</td>
             <td style="color:{gd_color};">{gd:.4f}</td>
             <td style="color:{vol_color};">{c['volume']:,}</td>
-            <td style="color:#666;">{c['oi']:,}</td>
-            <td style="color:#aaa;">{c['vol_oi_ratio']:.2f}</td>
-            <td style="color:#aaa;">{c['iv']:.1%}</td>
+            <td style="color:#aaa;">{c['iv']:.0%}</td>
             <td style="background:{sc_bg}; color:{sc_c}; font-weight:bold;
-                font-size:16px; text-align:center;">{score:.0f}</td>
+                font-size:14px; text-align:center;">{score:.0f}</td>
         </tr>"""
 
     html += "</tbody></table>"
@@ -773,40 +772,39 @@ def scanner_contracts_table_html(contracts, direction):
 
 
 def scanner_score_breakdown_html(contract):
-    """Score breakdown bars for top contract."""
+    """Compact score breakdown bars for top contract — fits in half-width."""
     if not contract or "score_components" not in contract:
         return ""
 
     components = contract["score_components"]
     labels = {
-        "gamma_accel": ("Gamma Accel", "30%"),
-        "volume_activity": ("Volume", "25%"),
-        "spread_tight": ("Spread", "20%"),
-        "iv_room": ("IV Room", "15%"),
-        "distance_otm": ("OTM Dist", "10%"),
+        "gamma_accel": ("Gamma", "30%"),
+        "volume_activity": ("Vol", "25%"),
+        "spread_tight": ("Sprd", "20%"),
+        "iv_room": ("IV", "15%"),
+        "distance_otm": ("OTM", "10%"),
     }
 
-    cards = ""
+    rows = ""
     for key, (label, weight) in labels.items():
         val = components.get(key, 0)
         if val >= 70:
-            bar_c, val_c = "#00c853", "#00e676"
+            bar_c = "#00c853"
         elif val >= 40:
-            bar_c, val_c = "#ffc107", "#ffca28"
+            bar_c = "#ffc107"
         else:
-            bar_c, val_c = "#ff1744", "#ff5252"
+            bar_c = "#ff1744"
 
-        cards += f"""<div style="flex:1; min-width:100px; background:#16213e;
-            border:1px solid #2a2a4a; border-radius:8px; padding:10px; text-align:center;">
-            <div style="color:#666; font-size:10px; text-transform:uppercase;
-                letter-spacing:1px;">{label}</div>
-            <div style="color:{val_c}; font-size:20px; font-weight:bold; margin:4px 0;">
-                {val:.0f}</div>
-            <div style="background:#1a1a2e; border-radius:3px; height:5px;
-                margin:4px 0; overflow:hidden;">
+        rows += f"""<div style="display:flex; align-items:center; gap:6px; margin:3px 0;">
+            <div style="color:#666; font-size:10px; width:36px; text-align:right;
+                text-transform:uppercase;">{label}</div>
+            <div style="flex:1; background:#1a1a2e; border-radius:3px; height:6px;
+                overflow:hidden;">
                 <div style="background:{bar_c}; width:{min(val,100)}%;
                     height:100%; border-radius:3px;"></div></div>
-            <div style="color:#555; font-size:10px;">Weight: {weight}</div>
+            <div style="color:{bar_c}; font-size:11px; font-weight:bold;
+                width:24px; text-align:right;">{val:.0f}</div>
         </div>"""
 
-    return f'<div style="display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;">{cards}</div>'
+    return f"""<div style="background:#16213e; border:1px solid #2a2a4a;
+        border-radius:8px; padding:8px 10px; margin:8px 0;">{rows}</div>"""
