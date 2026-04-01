@@ -1,4 +1,8 @@
-"""Contract Scanner — finds 0DTE SPX options with 3-5x potential."""
+"""Contract Scanner — finds 0DTE SPX options with 3-5x potential.
+
+Always scans BOTH calls and puts so you never miss a setup.
+Signal lean tells you which side the flow favors, but both are shown.
+"""
 
 import numpy as np
 from datetime import datetime
@@ -13,42 +17,59 @@ from config import (
 
 
 def scan_contracts(options_df, spot_price, signal):
-    """Scan option chain for high-potential 0DTE contracts.
-
-    Args:
-        options_df: DataFrame with all option fields including bid/ask/theta/vega/iv
-        spot_price: current SPX price
-        signal: dict from calculate_close_signal()
+    """Scan option chain for high-potential 0DTE contracts on BOTH sides.
 
     Returns:
-        dict with direction, contracts, alert_active, alert_type, alert_reasons,
-        timing_window, scan_summary
+        dict with lean, calls, puts, alert info, timing_window, scan_summary
     """
     if options_df.empty:
         return _empty_result()
 
-    direction, direction_reason = _resolve_direction(signal)
-    candidates = _filter_candidates(options_df, spot_price, direction)
-    scored = _score_candidates(candidates, spot_price, direction, options_df)
-    scored.sort(key=lambda c: c["score"], reverse=True)
-    top_contracts = scored[:SCANNER_TOP_N]
+    lean, lean_reason = _resolve_lean(signal)
+
+    # Always scan both directions
+    call_candidates = _filter_candidates(options_df, spot_price, "CALLS")
+    put_candidates = _filter_candidates(options_df, spot_price, "PUTS")
+
+    call_scored = _score_candidates(call_candidates, spot_price, "CALLS", options_df)
+    put_scored = _score_candidates(put_candidates, spot_price, "PUTS", options_df)
+
+    call_scored.sort(key=lambda c: c["score"], reverse=True)
+    put_scored.sort(key=lambda c: c["score"], reverse=True)
+
+    top_calls = call_scored[:SCANNER_TOP_N]
+    top_puts = put_scored[:SCANNER_TOP_N]
+
+    # Use the favored side for alerts, but show both
+    favored = top_calls if lean == "CALLS" else top_puts
     timing_window = _get_current_window()
     alert_active, alert_type, alert_reasons = _evaluate_alerts(
-        top_contracts, timing_window, signal
+        favored, timing_window, signal
     )
 
+    # Also check the other side — if it has a stronger top score, note it
+    other = top_puts if lean == "CALLS" else top_calls
+    other_label = "PUTS" if lean == "CALLS" else "CALLS"
+    if other and favored:
+        if other[0]["score"] > favored[0]["score"]:
+            alert_reasons.append(
+                f"NOTE: {other_label} top score ({other[0]['score']:.0f}) > "
+                f"{lean} top score ({favored[0]['score']:.0f})"
+            )
+
     return {
-        "direction": direction,
-        "direction_reason": direction_reason,
-        "contracts": top_contracts,
+        "lean": lean,
+        "lean_reason": lean_reason,
+        "calls": top_calls,
+        "puts": top_puts,
         "alert_active": alert_active,
         "alert_type": alert_type,
         "alert_reasons": alert_reasons,
         "timing_window": timing_window,
         "scan_summary": {
             "total_0dte": len(options_df[options_df["dte"] <= SCANNER_MAX_DTE]),
-            "in_price_range": len(candidates),
-            "scored": len(scored),
+            "call_candidates": len(call_candidates),
+            "put_candidates": len(put_candidates),
             "price_range": f"${SCANNER_PRICE_MIN:.2f} - ${SCANNER_PRICE_MAX:.2f}",
             "direction_score": signal["composite_score"],
             "direction_confidence": signal["confidence"],
@@ -56,18 +77,18 @@ def scan_contracts(options_df, spot_price, signal):
     }
 
 
-def _resolve_direction(signal):
-    """Pick CALLS or PUTS based on close signal."""
+def _resolve_lean(signal):
+    """Determine signal lean — not a hard filter, just advisory."""
     score = signal["composite_score"]
     confidence = signal["confidence"]
 
     if confidence < SCANNER_CONFIDENCE_THRESHOLD:
-        return "CALLS", f"Low confidence ({confidence:.0f}%), defaulting to CALLS"
+        return "NEUTRAL", f"Low confidence ({confidence:.0f}%) — showing both sides"
 
     if score > 0:
-        return "CALLS", f"Bullish signal: {score:+.4f}, {confidence:.0f}% confidence"
+        return "CALLS", f"Bullish lean: {score:+.4f}, {confidence:.0f}% confidence"
     else:
-        return "PUTS", f"Bearish signal: {score:+.4f}, {confidence:.0f}% confidence"
+        return "PUTS", f"Bearish lean: {score:+.4f}, {confidence:.0f}% confidence"
 
 
 def _filter_candidates(options_df, spot_price, direction):
@@ -145,26 +166,20 @@ def _score_candidates(candidates, spot_price, direction, options_df):
     for c in candidates:
         components = {}
 
-        # Gamma acceleration (30%)
         if max_gamma_ratio > 0:
             components["gamma_accel"] = min(c["gamma_delta_ratio"] / max_gamma_ratio * 100, 100)
         else:
             components["gamma_accel"] = 0
 
-        # Volume activity (25%)
         components["volume_activity"] = min(c["vol_oi_ratio"] / 3.0 * 100, 100)
-
-        # Spread tightness (20%)
         components["spread_tight"] = max((1 - c["spread_pct"]) * 100, 0)
 
-        # IV room (15%)
         if max_iv > min_iv and c["iv"] > 0:
             iv_pct = (c["iv"] - min_iv) / (max_iv - min_iv)
             components["iv_room"] = (1 - iv_pct) * 100
         else:
             components["iv_room"] = 50
 
-        # OTM distance (10%)
         if direction == "CALLS":
             distance = c["strike"] - spot_price
         else:
@@ -215,25 +230,21 @@ def _evaluate_alerts(contracts, timing_window, signal):
     reasons = []
     top = contracts[0]
 
-    # Volume spike
     volume_spike = False
     avg_vol = top.get("avg_volume", 0)
     if avg_vol > 0 and top["volume"] > avg_vol * SCANNER_VOLUME_SPIKE_MULTIPLIER:
         volume_spike = True
         reasons.append(f"Volume spike: {top['volume']:,} vs avg {avg_vol:,.0f} ({top['volume']/avg_vol:.1f}x)")
 
-    # Gamma setup
     gamma_setup = False
     if top["gamma_delta_ratio"] > SCANNER_GAMMA_DELTA_THRESHOLD:
         gamma_setup = True
         reasons.append(f"Gamma accel: {top['gamma_delta_ratio']:.4f} (>{SCANNER_GAMMA_DELTA_THRESHOLD})")
 
-    # Timing window
     in_window = timing_window is not None
     if in_window:
         reasons.append(f"{timing_window['name']} ({timing_window['start']}-{timing_window['end']} ET)")
 
-    # Direction confidence
     confident = signal["confidence"] > SCANNER_CONFIDENCE_THRESHOLD
     if confident:
         reasons.append(f"Direction: {signal['confidence']:.0f}% ({signal['direction']})")
@@ -253,15 +264,16 @@ def _evaluate_alerts(contracts, timing_window, signal):
 
 def _empty_result():
     return {
-        "direction": "CALLS",
-        "direction_reason": "No data available",
-        "contracts": [],
+        "lean": "NEUTRAL",
+        "lean_reason": "No data available",
+        "calls": [],
+        "puts": [],
         "alert_active": False,
         "alert_type": None,
         "alert_reasons": [],
         "timing_window": None,
         "scan_summary": {
-            "total_0dte": 0, "in_price_range": 0, "scored": 0,
+            "total_0dte": 0, "call_candidates": 0, "put_candidates": 0,
             "price_range": "", "direction_score": 0, "direction_confidence": 0,
         },
     }

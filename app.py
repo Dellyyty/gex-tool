@@ -25,7 +25,7 @@ from ui_components import (
     style_gex_table, create_gex_bar_chart, market_status_html,
     signal_badge_html, single_card_html,
     create_premium_flow_chart, create_signal_history_chart, close_alert_html,
-    scanner_alert_banner_html, scanner_direction_card_html,
+    scanner_alert_banner_html, scanner_lean_badge_html,
     scanner_timing_html, scanner_contracts_table_html,
     scanner_score_breakdown_html, scanner_summary_cards_html,
 )
@@ -269,8 +269,8 @@ with tab_scanner:
     if alert_html:
         st.markdown(alert_html, unsafe_allow_html=True)
 
-    # Direction badge
-    st.markdown(scanner_direction_card_html(scan_result), unsafe_allow_html=True)
+    # Lean badge
+    st.markdown(scanner_lean_badge_html(scan_result), unsafe_allow_html=True)
 
     # Timing window + summary cards
     col_timing, col_summary = st.columns([1, 3])
@@ -279,24 +279,42 @@ with tab_scanner:
     with col_summary:
         st.markdown(scanner_summary_cards_html(scan_result), unsafe_allow_html=True)
 
-    # Contracts table
-    st.markdown(
-        scanner_contracts_table_html(scan_result["contracts"], scan_result["direction"]),
-        unsafe_allow_html=True,
-    )
+    # Contracts tables — BOTH sides, side by side
+    col_calls, col_puts = st.columns(2)
 
-    # Score breakdown for top contract
-    if scan_result["contracts"]:
+    with col_calls:
         st.markdown(
-            '<div style="color:#888; font-size:12px; margin-top:16px; '
-            'text-transform:uppercase; letter-spacing:2px;">'
-            'Score Breakdown — Top Contract</div>',
+            scanner_contracts_table_html(scan_result["calls"], "CALLS"),
             unsafe_allow_html=True,
         )
+        if scan_result["calls"]:
+            st.markdown(
+                '<div style="color:#888; font-size:11px; margin-top:12px; '
+                'text-transform:uppercase; letter-spacing:2px;">'
+                'Score Breakdown — Top Call</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                scanner_score_breakdown_html(scan_result["calls"][0]),
+                unsafe_allow_html=True,
+            )
+
+    with col_puts:
         st.markdown(
-            scanner_score_breakdown_html(scan_result["contracts"][0]),
+            scanner_contracts_table_html(scan_result["puts"], "PUTS"),
             unsafe_allow_html=True,
         )
+        if scan_result["puts"]:
+            st.markdown(
+                '<div style="color:#888; font-size:11px; margin-top:12px; '
+                'text-transform:uppercase; letter-spacing:2px;">'
+                'Score Breakdown — Top Put</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                scanner_score_breakdown_html(scan_result["puts"][0]),
+                unsafe_allow_html=True,
+            )
 
     # Alert reasons
     if scan_result["alert_reasons"]:

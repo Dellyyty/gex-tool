@@ -583,7 +583,7 @@ def scanner_alert_banner_html(scan_result):
         return ""
 
     alert_type = scan_result["alert_type"]
-    direction = scan_result["direction"]
+    lean = scan_result["lean"]
 
     styles = {
         "COMPOSITE": ("linear-gradient(135deg, #ff6f00, #e65100)", "#ffab00", "COMPOSITE ALERT"),
@@ -592,8 +592,12 @@ def scanner_alert_banner_html(scan_result):
         "TIME_WINDOW": ("linear-gradient(135deg, #0d47a1, #1565c0)", "#42a5f5", "TIME WINDOW"),
     }
     bg, border, label = styles.get(alert_type, styles["TIME_WINDOW"])
-    dir_color = "#00c853" if direction == "CALLS" else "#ff1744"
     reasons = " | ".join(scan_result["alert_reasons"])
+
+    lean_text = ""
+    if lean != "NEUTRAL":
+        lean_color = "#00c853" if lean == "CALLS" else "#ff1744"
+        lean_text = f' — Leaning <span style="color:{lean_color};">{lean}</span>'
 
     return f"""
     <style>@keyframes scanner-pulse {{ 0%,100% {{ opacity:1; }} 50% {{ opacity:0.7; }} }}</style>
@@ -601,28 +605,33 @@ def scanner_alert_banner_html(scan_result):
         padding:14px 20px; margin:10px 0; text-align:center;
         animation:scanner-pulse 1.5s ease-in-out infinite;">
         <div style="color:#fff; font-size:18px; font-weight:bold; letter-spacing:2px;">
-            {label} — <span style="color:{dir_color};">{direction}</span></div>
+            {label}{lean_text}</div>
         <div style="color:rgba(255,255,255,0.7); font-size:12px; margin-top:6px;">{reasons}</div>
     </div>"""
 
 
-def scanner_direction_card_html(scan_result):
-    """Big SCANNING CALLS/PUTS badge."""
-    direction = scan_result["direction"]
-    reason = scan_result["direction_reason"]
+def scanner_lean_badge_html(scan_result):
+    """Signal lean badge — shows which direction flow favors."""
+    lean = scan_result["lean"]
+    reason = scan_result["lean_reason"]
 
-    if direction == "CALLS":
+    if lean == "CALLS":
         bg, border, tc = "#00c853", "#00e676", "#000"
-    else:
+        label = "FLOW LEANS CALLS"
+    elif lean == "PUTS":
         bg, border, tc = "#ff1744", "#ff5252", "#fff"
+        label = "FLOW LEANS PUTS"
+    else:
+        bg, border, tc = "#555", "#777", "#fff"
+        label = "NO CLEAR LEAN"
 
     return f"""
-    <div style="text-align:center; margin:16px 0;">
-        <div style="display:inline-block; background:{bg}; border:3px solid {border};
-            border-radius:16px; padding:16px 40px; box-shadow:0 0 20px {bg}44;">
-            <div style="color:{tc}; font-size:36px; font-weight:900; letter-spacing:3px;">
-                SCANNING {direction}</div>
-            <div style="color:{tc}; font-size:13px; opacity:0.85; margin-top:4px;">{reason}</div>
+    <div style="text-align:center; margin:12px 0;">
+        <div style="display:inline-block; background:{bg}; border:2px solid {border};
+            border-radius:12px; padding:10px 30px; box-shadow:0 0 15px {bg}33;">
+            <div style="color:{tc}; font-size:22px; font-weight:900; letter-spacing:2px;">
+                {label}</div>
+            <div style="color:{tc}; font-size:12px; opacity:0.85; margin-top:2px;">{reason}</div>
         </div>
     </div>"""
 
@@ -657,20 +666,26 @@ def scanner_timing_html(timing_window):
 
 
 def scanner_summary_cards_html(scan_result):
-    """Summary metric cards for scanner tab."""
+    """Summary metric cards for scanner tab — shows best of each side."""
     summary = scan_result["scan_summary"]
-    contracts = scan_result["contracts"]
-    top_score = contracts[0]["score"] if contracts else 0
-    top_strike = contracts[0]["strike"] if contracts else 0
-    top_mark = contracts[0]["mark"] if contracts else 0
+    calls = scan_result["calls"]
+    puts = scan_result["puts"]
+
+    call_score = calls[0]["score"] if calls else 0
+    call_strike = calls[0]["strike"] if calls else 0
+    put_score = puts[0]["score"] if puts else 0
+    put_strike = puts[0]["strike"] if puts else 0
+
+    def score_color(s):
+        return "#00c853" if s >= 70 else "#ffc107" if s >= 50 else "#ff5252"
 
     cards = [
-        ("Top Contract", f"{top_strike:,.0f}" if top_strike else "--",
-         f"${top_mark:.2f}" if top_mark else "", "#fff"),
-        ("Top Score", f"{top_score:.0f}",
-         "of 100", "#00c853" if top_score >= 70 else "#ffc107" if top_score >= 50 else "#ff5252"),
-        ("Candidates", str(summary.get("in_price_range", 0)),
-         f"of {summary.get('total_0dte', 0)} 0DTE", "#90caf9"),
+        ("Best Call", f"{call_strike:,.0f}" if call_strike else "--",
+         f"Score: {call_score:.0f}", score_color(call_score)),
+        ("Best Put", f"{put_strike:,.0f}" if put_strike else "--",
+         f"Score: {put_score:.0f}", score_color(put_score)),
+        ("0DTE Found", f"{summary.get('call_candidates', 0)}C / {summary.get('put_candidates', 0)}P",
+         f"of {summary.get('total_0dte', 0)} total", "#90caf9"),
         ("Price Range", summary.get("price_range", ""),
          "target: $400-$550", "#aaa"),
     ]
