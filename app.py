@@ -28,6 +28,9 @@ from ui_components import (
     scanner_alert_banner_html, scanner_lean_badge_html,
     scanner_timing_html, scanner_contracts_table_html,
     scanner_score_breakdown_html, scanner_summary_cards_html,
+    brrrr_signal_html, brrrr_confidence_meter_html,
+    brrrr_conviction_guide_html, brrrr_strikes_html,
+    brrrr_signal_components_html,
 )
 from config import (
     DATA_SOURCE, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM,
@@ -198,8 +201,8 @@ if len(st.session_state.premium_history) > 500:
     st.session_state.premium_history = st.session_state.premium_history[-500:]
 
 # === TABBED LAYOUT ===
-tab_gex, tab_signal, tab_scanner = st.tabs([
-    "GEX Dashboard", "Close Direction", "Contract Scanner"
+tab_gex, tab_signal, tab_scanner, tab_brrrr = st.tabs([
+    "GEX Dashboard", "Close Direction", "Contract Scanner", "BRRRR"
 ])
 
 # --- GEX Dashboard Tab (original content) ---
@@ -324,6 +327,61 @@ with tab_scanner:
             f'margin-top:12px;">Triggers: {reasons_text}</div>',
             unsafe_allow_html=True,
         )
+
+# --- BRRRR Tab ---
+with tab_brrrr:
+    # Big directional signal
+    st.markdown(brrrr_signal_html(signal), unsafe_allow_html=True)
+
+    # Confidence meter + conviction guide side by side
+    col_meter, col_guide = st.columns([3, 2])
+    with col_meter:
+        st.markdown(brrrr_confidence_meter_html(signal["confidence"]), unsafe_allow_html=True)
+    with col_guide:
+        st.markdown(brrrr_conviction_guide_html(), unsafe_allow_html=True)
+
+    # Signal component breakdown
+    st.markdown(brrrr_signal_components_html(signal), unsafe_allow_html=True)
+
+    # Determine which side to show strikes for
+    scan_result = scan_contracts(options_df, spot_price, signal)
+
+    if signal["direction"] == "BUY":
+        pick_dir = "CALLS"
+        pick_contracts = scan_result["calls"]
+    elif signal["direction"] == "SELL":
+        pick_dir = "PUTS"
+        pick_contracts = scan_result["puts"]
+    else:
+        # NEUTRAL — show whichever side has higher top score
+        call_top = scan_result["calls"][0]["score"] if scan_result["calls"] else 0
+        put_top = scan_result["puts"][0]["score"] if scan_result["puts"] else 0
+        if call_top >= put_top and scan_result["calls"]:
+            pick_dir = "CALLS"
+            pick_contracts = scan_result["calls"]
+        elif scan_result["puts"]:
+            pick_dir = "PUTS"
+            pick_contracts = scan_result["puts"]
+        else:
+            pick_dir = "CALLS"
+            pick_contracts = []
+
+    if signal["direction"] == "NEUTRAL":
+        st.markdown(
+            '<div style="text-align:center; color:#888; font-size:13px; margin:8px 0;">'
+            'Signal is NEUTRAL — showing best available strikes. '
+            '<span style="color:#ff9800; font-weight:bold;">Wait for conviction before entering.</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        f'<div style="color:#888; font-size:12px; text-transform:uppercase; '
+        f'letter-spacing:2px; text-align:center; margin:16px 0 4px;">'
+        f'Top Strikes to Watch</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(brrrr_strikes_html(pick_contracts, pick_dir, spot_price), unsafe_allow_html=True)
 
 # Auto-refresh logic
 if auto_refresh:

@@ -808,3 +808,295 @@ def scanner_score_breakdown_html(contract):
 
     return f"""<div style="background:#16213e; border:1px solid #2a2a4a;
         border-radius:8px; padding:8px 10px; margin:8px 0;">{rows}</div>"""
+
+
+# ========== BRRRR TAB ==========
+
+def brrrr_signal_html(signal):
+    """Big directional signal — the centerpiece of the BRRRR tab."""
+    direction = signal["direction"]
+    confidence = signal["confidence"]
+    score = signal["composite_score"]
+
+    if direction == "BUY":
+        bg = "linear-gradient(135deg, #004d25, #00c853)"
+        border = "#00e676"
+        label = "BUY CALLS"
+        icon = "&#9650;"  # ▲
+        glow = "0 0 40px rgba(0,200,83,0.4), 0 0 80px rgba(0,200,83,0.15)"
+    elif direction == "SELL":
+        bg = "linear-gradient(135deg, #4d0011, #ff1744)"
+        border = "#ff5252"
+        label = "BUY PUTS"
+        icon = "&#9660;"  # ▼
+        glow = "0 0 40px rgba(255,23,68,0.4), 0 0 80px rgba(255,23,68,0.15)"
+    else:
+        bg = "linear-gradient(135deg, #2a2a3a, #444)"
+        border = "#666"
+        label = "WAIT"
+        icon = "&#9644;"  # ▬
+        glow = "none"
+
+    return f"""
+    <div style="text-align:center; margin:16px 0;">
+        <div style="display:inline-block; background:{bg}; border:3px solid {border};
+            border-radius:20px; padding:24px 60px; box-shadow:{glow};">
+            <div style="color:#fff; font-size:48px; font-weight:900; letter-spacing:4px;
+                text-shadow:0 2px 10px rgba(0,0,0,0.5);">
+                {icon} {label}</div>
+            <div style="color:rgba(255,255,255,0.8); font-size:16px; margin-top:6px;">
+                Score: {score:+.4f}</div>
+        </div>
+    </div>"""
+
+
+def brrrr_confidence_meter_html(confidence):
+    """Visual confidence meter with conviction guide."""
+    # Determine tier
+    if confidence >= 65:
+        tier = "HIGH CONVICTION"
+        tier_desc = "Full size — strong edge"
+        tier_color = "#00c853"
+        tier_bg = "rgba(0,200,83,0.15)"
+    elif confidence >= 45:
+        tier = "MODERATE"
+        tier_desc = "Standard size"
+        tier_color = "#ffc107"
+        tier_bg = "rgba(255,193,7,0.1)"
+    elif confidence >= 25:
+        tier = "SPECULATIVE"
+        tier_desc = "Small size only"
+        tier_color = "#ff9800"
+        tier_bg = "rgba(255,152,0,0.1)"
+    else:
+        tier = "NO EDGE"
+        tier_desc = "Sit on hands"
+        tier_color = "#ff1744"
+        tier_bg = "rgba(255,23,68,0.1)"
+
+    # Build tick marks for the meter
+    ticks = ""
+    for pct in [0, 25, 45, 65, 100]:
+        ticks += f"""<div style="position:absolute; left:{pct}%; top:-14px;
+            transform:translateX(-50%); color:#555; font-size:9px;">{pct}</div>"""
+
+    # Color segments on the bar
+    segments = f"""
+    <div style="position:absolute; left:0; width:25%; height:100%;
+        background:#ff1744; border-radius:4px 0 0 4px; opacity:0.3;"></div>
+    <div style="position:absolute; left:25%; width:20%; height:100%;
+        background:#ff9800; opacity:0.3;"></div>
+    <div style="position:absolute; left:45%; width:20%; height:100%;
+        background:#ffc107; opacity:0.3;"></div>
+    <div style="position:absolute; left:65%; width:35%; height:100%;
+        background:#00c853; border-radius:0 4px 4px 0; opacity:0.3;"></div>"""
+
+    fill_pct = min(confidence, 100)
+
+    return f"""
+    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        padding:20px 24px; margin:12px 0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:12px;">
+            <div style="color:#888; font-size:12px; text-transform:uppercase;
+                letter-spacing:2px;">Confidence</div>
+            <div style="background:{tier_bg}; border:1px solid {tier_color};
+                border-radius:6px; padding:4px 12px;">
+                <span style="color:{tier_color}; font-size:14px; font-weight:bold;">
+                    {tier}</span>
+                <span style="color:#888; font-size:11px; margin-left:6px;">{tier_desc}</span>
+            </div>
+        </div>
+        <div style="position:relative; background:#1a1a2e; border-radius:4px;
+            height:12px; margin-top:20px; overflow:visible;">
+            {segments}
+            <div style="position:absolute; left:0; width:{fill_pct}%; height:100%;
+                background:{tier_color}; border-radius:4px; opacity:0.8;
+                transition:width 0.3s;"></div>
+            <div style="position:absolute; left:{fill_pct}%; top:-4px;
+                transform:translateX(-50%); width:4px; height:20px;
+                background:#fff; border-radius:2px;
+                box-shadow:0 0 6px {tier_color};"></div>
+            {ticks}
+        </div>
+        <div style="text-align:center; margin-top:16px;">
+            <span style="color:{tier_color}; font-size:28px; font-weight:bold;">
+                {confidence:.0f}%</span>
+        </div>
+    </div>"""
+
+
+def brrrr_conviction_guide_html():
+    """Static conviction guide showing what each tier means."""
+    tiers = [
+        ("#ff1744", "0-24%", "NO EDGE", "Don't trade. Signal too weak."),
+        ("#ff9800", "25-44%", "SPECULATIVE", "Small size if you must. Accept the risk."),
+        ("#ffc107", "45-64%", "MODERATE", "Standard position. Flow supports direction."),
+        ("#00c853", "65%+", "HIGH CONVICTION", "Full size. Multiple signals aligned."),
+    ]
+
+    rows = ""
+    for color, pct_range, tier, desc in tiers:
+        rows += f"""<div style="display:flex; align-items:center; gap:10px; padding:6px 0;
+            border-bottom:1px solid rgba(255,255,255,0.04);">
+            <div style="width:8px; height:8px; border-radius:50%;
+                background:{color}; flex-shrink:0;"></div>
+            <div style="color:{color}; font-size:12px; font-weight:bold;
+                width:50px;">{pct_range}</div>
+            <div style="color:#ccc; font-size:12px; font-weight:600;
+                width:120px;">{tier}</div>
+            <div style="color:#888; font-size:11px;">{desc}</div>
+        </div>"""
+
+    return f"""
+    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        padding:16px; margin:12px 0;">
+        <div style="color:#888; font-size:11px; text-transform:uppercase;
+            letter-spacing:2px; margin-bottom:8px;">Conviction Guide</div>
+        {rows}
+    </div>"""
+
+
+def brrrr_strikes_html(contracts, direction, spot_price):
+    """Show top 3 strikes for the chosen direction — simple and actionable."""
+    hc = "#00c853" if direction == "CALLS" else "#ff1744"
+    dir_label = "CALL" if direction == "CALLS" else "PUT"
+
+    if not contracts:
+        return f"""
+        <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+            padding:24px; text-align:center; margin:12px 0;">
+            <div style="color:#888; font-size:14px;">No 0DTE {dir_label.lower()}s in $4-$5.50 range</div>
+        </div>"""
+
+    top3 = contracts[:3]
+
+    cards = ""
+    for i, c in enumerate(top3):
+        rank = i + 1
+        strike = c["strike"]
+        mark = c["mark"]
+        cost = mark * 100
+
+        # Distance from ATM
+        if direction == "CALLS":
+            dist = strike - spot_price
+            dist_label = f"{dist:+.0f} pts OTM" if dist > 0 else f"{abs(dist):.0f} pts ITM"
+        else:
+            dist = spot_price - strike
+            dist_label = f"{dist:+.0f} pts OTM" if dist > 0 else f"{abs(dist):.0f} pts ITM"
+
+        # Potential (3x and 5x targets)
+        target_3x = mark * 3
+        target_5x = mark * 5
+
+        # Visual emphasis — #1 is highlighted
+        if rank == 1:
+            card_bg = f"linear-gradient(135deg, #16213e, {hc}15)"
+            card_border = hc
+            strike_size = "28px"
+            label_text = "TOP PICK"
+        else:
+            card_bg = "#16213e"
+            card_border = "#2a2a4a"
+            strike_size = "22px"
+            label_text = f"#{rank}"
+
+        cards += f"""
+        <div style="background:{card_bg}; border:1px solid {card_border};
+            border-radius:12px; padding:16px; margin:8px 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="color:{hc}; font-size:10px; font-weight:bold;
+                        text-transform:uppercase; letter-spacing:2px;">{label_text}</div>
+                    <div style="color:#fff; font-size:{strike_size}; font-weight:bold;
+                        margin:4px 0;">{strike:,.0f} {dir_label}</div>
+                    <div style="color:#888; font-size:12px;">{dist_label}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="color:#fff; font-size:20px; font-weight:bold;">
+                        ${mark:.2f}</div>
+                    <div style="color:#888; font-size:11px;">${cost:,.0f} per contract</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:10px;
+                border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
+                <div style="flex:1; text-align:center;">
+                    <div style="color:#555; font-size:10px;">BID/ASK</div>
+                    <div style="color:#aaa; font-size:12px;">
+                        ${c['bid']:.2f} / ${c['ask']:.2f}</div>
+                </div>
+                <div style="flex:1; text-align:center;">
+                    <div style="color:#555; font-size:10px;">3X TARGET</div>
+                    <div style="color:#ffc107; font-size:12px; font-weight:bold;">
+                        ${target_3x:.2f}</div>
+                </div>
+                <div style="flex:1; text-align:center;">
+                    <div style="color:#555; font-size:10px;">5X TARGET</div>
+                    <div style="color:#00e676; font-size:12px; font-weight:bold;">
+                        ${target_5x:.2f}</div>
+                </div>
+                <div style="flex:1; text-align:center;">
+                    <div style="color:#555; font-size:10px;">VOL</div>
+                    <div style="color:#aaa; font-size:12px;">{c['volume']:,}</div>
+                </div>
+            </div>
+        </div>"""
+
+    return cards
+
+
+def brrrr_signal_components_html(signal):
+    """Compact view of what's driving the signal — horizontal bars."""
+    components = signal["components"]
+
+    rows = ""
+    for key, comp in components.items():
+        label = comp["label"]
+        norm = comp["normalized"]
+        weight_pct = comp["weight"] * 100
+
+        # Color based on direction
+        if norm > 0.1:
+            bar_c = "#00c853"
+            direction = "right"
+        elif norm < -0.1:
+            bar_c = "#ff1744"
+            direction = "left"
+        else:
+            bar_c = "#555"
+            direction = "right"
+
+        bar_width = abs(norm) * 50  # max 50% of bar width (centered)
+
+        rows += f"""<div style="display:flex; align-items:center; gap:8px; margin:6px 0;">
+            <div style="color:#888; font-size:11px; width:110px; text-align:right;">{label}</div>
+            <div style="flex:1; height:8px; background:#1a1a2e; border-radius:4px;
+                position:relative; overflow:hidden;">
+                <div style="position:absolute; left:50%; top:0; width:1px; height:100%;
+                    background:#333;"></div>"""
+
+        if direction == "right":
+            rows += f"""<div style="position:absolute; left:50%; width:{bar_width}%;
+                height:100%; background:{bar_c}; border-radius:0 4px 4px 0;"></div>"""
+        else:
+            rows += f"""<div style="position:absolute; right:50%; width:{bar_width}%;
+                height:100%; background:{bar_c}; border-radius:4px 0 0 4px;"></div>"""
+
+        rows += f"""</div>
+            <div style="color:{bar_c}; font-size:11px; font-weight:bold;
+                width:40px; text-align:right;">{norm:+.2f}</div>
+            <div style="color:#555; font-size:10px; width:30px;">{weight_pct:.0f}%</div>
+        </div>"""
+
+    return f"""
+    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        padding:14px 16px; margin:12px 0;">
+        <div style="color:#888; font-size:11px; text-transform:uppercase;
+            letter-spacing:2px; margin-bottom:8px;">Signal Breakdown</div>
+        <div style="display:flex; justify-content:center; gap:24px; margin-bottom:6px;">
+            <span style="color:#ff1744; font-size:10px;">&#9668; PUTS</span>
+            <span style="color:#00c853; font-size:10px;">CALLS &#9658;</span>
+        </div>
+        {rows}
+    </div>"""
