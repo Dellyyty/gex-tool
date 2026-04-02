@@ -1100,3 +1100,302 @@ def brrrr_signal_components_html(signal):
         </div>
         {rows}
     </div>"""
+
+
+# ========== FACTOR 2 TAB ==========
+
+def factor2_signal_html(signal_v2):
+    """Big directional signal for Factor 2 — same style as BRRRR."""
+    direction = signal_v2["direction"]
+    confidence = signal_v2["confidence"]
+    score = signal_v2["composite_score"]
+
+    if direction == "BUY":
+        bg = "linear-gradient(135deg, #004d25, #00c853)"
+        border = "#00e676"
+        label = "BUY CALLS"
+        icon = "&#9650;"
+        glow = "0 0 40px rgba(0,200,83,0.4), 0 0 80px rgba(0,200,83,0.15)"
+    elif direction == "SELL":
+        bg = "linear-gradient(135deg, #4d0011, #ff1744)"
+        border = "#ff5252"
+        label = "BUY PUTS"
+        icon = "&#9660;"
+        glow = "0 0 40px rgba(255,23,68,0.4), 0 0 80px rgba(255,23,68,0.15)"
+    else:
+        bg = "linear-gradient(135deg, #2a2a3a, #444)"
+        border = "#666"
+        label = "WAIT"
+        icon = "&#9644;"
+        glow = "none"
+
+    return f"""
+    <div style="text-align:center; margin:16px 0;">
+        <div style="display:inline-block; background:{bg}; border:3px solid {border};
+            border-radius:20px; padding:24px 60px; box-shadow:{glow};">
+            <div style="color:#fff; font-size:48px; font-weight:900; letter-spacing:4px;
+                text-shadow:0 2px 10px rgba(0,0,0,0.5);">
+                {icon} {label}</div>
+            <div style="color:rgba(255,255,255,0.8); font-size:16px; margin-top:6px;">
+                Score: {score:+.4f} | Factor 2 Engine</div>
+        </div>
+    </div>"""
+
+
+def factor2_confidence_html(confidence):
+    """Confidence meter with adjusted tiers for Factor 2."""
+    if confidence >= 40:
+        tier = "FULL SIZE"
+        tier_desc = "3-5 contracts — strong alignment"
+        tier_color = "#00c853"
+    elif confidence >= 25:
+        tier = "STANDARD"
+        tier_desc = "2-3 contracts — flow supports"
+        tier_color = "#ffc107"
+    elif confidence >= 10:
+        tier = "SMALL SPEC"
+        tier_desc = "1-2 contracts — slight lean"
+        tier_color = "#ff9800"
+    else:
+        tier = "SKIP"
+        tier_desc = "Signals conflicting"
+        tier_color = "#ff1744"
+
+    fill = min(confidence, 50) * 2  # Scale 0-50% to 0-100% bar width
+
+    return f"""
+    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        padding:20px; margin:12px 0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:12px;">
+            <div>
+                <span style="color:{tier_color}; font-size:32px; font-weight:bold;">
+                    {confidence:.0f}%</span>
+                <span style="color:#888; font-size:14px; margin-left:8px;">confidence</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.3); border:1px solid {tier_color};
+                border-radius:6px; padding:4px 14px;">
+                <span style="color:{tier_color}; font-size:14px; font-weight:bold;">
+                    {tier}</span>
+            </div>
+        </div>
+        <div style="background:#1a1a2e; border-radius:4px; height:10px; overflow:hidden;">
+            <div style="background:{tier_color}; width:{fill}%; height:100%;
+                border-radius:4px; transition:width 0.3s;"></div>
+        </div>
+        <div style="color:#888; font-size:11px; margin-top:6px;">{tier_desc}</div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px;">
+            <span style="color:#ff1744; font-size:9px;">0% SKIP</span>
+            <span style="color:#ff9800; font-size:9px;">10% SPEC</span>
+            <span style="color:#ffc107; font-size:9px;">25% STD</span>
+            <span style="color:#00c853; font-size:9px;">40%+ FULL</span>
+        </div>
+    </div>"""
+
+
+def factor2_breakdown_html(signal_v2):
+    """Signal component breakdown for Factor 2 — horizontal tug-of-war bars."""
+    components = signal_v2["components"]
+
+    rows = ""
+    for key, comp in components.items():
+        label = comp["label"]
+        norm = comp["normalized"]
+        weight_pct = comp["weight"] * 100
+
+        if norm > 0.1:
+            bar_c = "#00c853"
+        elif norm < -0.1:
+            bar_c = "#ff1744"
+        else:
+            bar_c = "#555"
+
+        bar_width = abs(norm) * 50
+
+        if norm >= 0:
+            bar_pos = f"left:50%; width:{bar_width}%; border-radius:0 4px 4px 0;"
+        else:
+            bar_pos = f"right:50%; width:{bar_width}%; border-radius:4px 0 0 4px;"
+
+        rows += f"""<div style="display:flex; align-items:center; gap:8px; margin:8px 0;">
+            <div style="color:#888; font-size:12px; width:120px; text-align:right;
+                font-weight:500;">{label}</div>
+            <div style="flex:1; height:10px; background:#1a1a2e; border-radius:4px;
+                position:relative;">
+                <div style="position:absolute; left:50%; top:0; width:1px; height:100%;
+                    background:#333;"></div>
+                <div style="position:absolute; {bar_pos}
+                    height:100%; background:{bar_c};"></div>
+            </div>
+            <div style="color:{bar_c}; font-size:12px; font-weight:bold;
+                width:44px; text-align:right;">{norm:+.2f}</div>
+            <div style="color:#555; font-size:10px; width:30px;">{weight_pct:.0f}%</div>
+        </div>"""
+
+    return f"""
+    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        padding:16px 18px; margin:12px 0;">
+        <div style="color:#888; font-size:11px; text-transform:uppercase;
+            letter-spacing:2px; margin-bottom:6px;">Factor 2 Breakdown</div>
+        <div style="display:flex; justify-content:center; gap:24px; margin-bottom:8px;">
+            <span style="color:#ff1744; font-size:10px;">&#9668; BEARISH</span>
+            <span style="color:#00c853; font-size:10px;">BULLISH &#9658;</span>
+        </div>
+        {rows}
+    </div>"""
+
+
+def factor2_flip_badge_html(flip_level, spot_price):
+    """Show the GEX flip level relative to spot."""
+    if flip_level is None:
+        return ""
+
+    distance = spot_price - flip_level
+    above = distance > 0
+
+    if above:
+        regime_label = "ABOVE FLIP"
+        regime_desc = "Positive gamma — dealers dampen moves (mean-reverting)"
+        color = "#00c853"
+        icon = "&#9650;"
+    else:
+        regime_label = "BELOW FLIP"
+        regime_desc = "Negative gamma — dealers amplify moves (trending)"
+        color = "#ff1744"
+        icon = "&#9660;"
+
+    return f"""
+    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        padding:14px; margin:12px 0; text-align:center;">
+        <div style="color:#888; font-size:10px; text-transform:uppercase;
+            letter-spacing:2px;">GEX Flip Level</div>
+        <div style="color:#fff; font-size:24px; font-weight:bold; margin:4px 0;">
+            {flip_level:,.1f}</div>
+        <div style="color:{color}; font-size:13px; font-weight:bold;">
+            {icon} {regime_label} ({distance:+.1f} pts)</div>
+        <div style="color:#888; font-size:11px; margin-top:4px;">{regime_desc}</div>
+    </div>"""
+
+
+# ========== 0 GAMMA TAB ==========
+
+def zero_gamma_header_html(flip_level, spot_price):
+    """Big 0-gamma display — the centerpiece."""
+    if flip_level is None:
+        return """
+        <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:16px;
+            padding:40px; text-align:center; margin:16px 0;">
+            <div style="color:#888; font-size:18px;">No GEX crossover detected</div>
+            <div style="color:#555; font-size:13px; margin-top:8px;">
+                All strikes have same-sign GEX</div>
+        </div>"""
+
+    distance = spot_price - flip_level
+    above = distance > 0
+
+    if above:
+        zone_color = "#00c853"
+        zone_label = "POSITIVE GAMMA ZONE"
+        zone_desc = "Dealers BUY dips, SELL rips — mean-reverting, range-bound"
+        zone_glow = "0 0 40px rgba(0,200,83,0.3)"
+    else:
+        zone_color = "#ff1744"
+        zone_label = "NEGATIVE GAMMA ZONE"
+        zone_desc = "Dealers SELL dips, BUY rips — trending, explosive moves"
+        zone_glow = "0 0 40px rgba(255,23,68,0.3)"
+
+    pct_dist = abs(distance) / spot_price * 100
+
+    return f"""
+    <div style="text-align:center; margin:16px 0;">
+        <div style="display:inline-block; background:#16213e; border:3px solid {zone_color};
+            border-radius:20px; padding:24px 40px; box-shadow:{zone_glow};">
+            <div style="color:{zone_color}; font-size:14px; font-weight:bold;
+                text-transform:uppercase; letter-spacing:3px;">{zone_label}</div>
+            <div style="margin:16px 0;">
+                <span style="color:#888; font-size:14px;">0 Gamma Level</span>
+                <div style="color:#fff; font-size:42px; font-weight:900;
+                    text-shadow:0 0 20px {zone_color}44;">{flip_level:,.1f}</div>
+            </div>
+            <div style="display:flex; justify-content:center; gap:30px; margin-top:8px;">
+                <div>
+                    <div style="color:#888; font-size:10px; text-transform:uppercase;">SPX Now</div>
+                    <div style="color:#fff; font-size:18px; font-weight:bold;">{spot_price:,.2f}</div>
+                </div>
+                <div>
+                    <div style="color:#888; font-size:10px; text-transform:uppercase;">Distance</div>
+                    <div style="color:{zone_color}; font-size:18px; font-weight:bold;">
+                        {distance:+.1f} pts</div>
+                </div>
+                <div>
+                    <div style="color:#888; font-size:10px; text-transform:uppercase;">% Away</div>
+                    <div style="color:{zone_color}; font-size:18px; font-weight:bold;">
+                        {pct_dist:.2f}%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="text-align:center; color:#888; font-size:12px; margin-top:4px;">
+        {zone_desc}</div>"""
+
+
+def zero_gamma_stats_html(regime_info, spot_price):
+    """Stats cards for the 0 gamma tab."""
+    total = regime_info.get("total_gex", 0)
+    pos = regime_info.get("positive_gex", 0)
+    neg = regime_info.get("negative_gex", 0)
+    max_strike = regime_info.get("max_gex_strike", 0)
+    regime = regime_info.get("regime", "UNKNOWN")
+
+    regime_color = "#00c853" if regime == "POSITIVE" else "#ff1744"
+
+    from gex_calculator import format_gex_value
+
+    cards = [
+        ("Net GEX", format_gex_value(total), regime, regime_color),
+        ("Positive GEX", format_gex_value(pos), "Call-dominant strikes", "#00c853"),
+        ("Negative GEX", format_gex_value(neg), "Put-dominant strikes", "#ff1744"),
+        ("GEX Magnet", f"{max_strike:,.0f}" if max_strike else "--",
+         f"{max_strike - spot_price:+.0f} pts from spot" if max_strike else "", "#90caf9"),
+    ]
+
+    html = '<div style="display:flex; gap:10px; margin:16px 0;">'
+    for label, value, sub, color in cards:
+        html += f"""<div style="flex:1; background:#16213e; border:1px solid #2a2a4a;
+            border-radius:10px; padding:14px; text-align:center;">
+            <div style="color:#666; font-size:10px; text-transform:uppercase;
+                letter-spacing:2px;">{label}</div>
+            <div style="color:{color}; font-size:22px; font-weight:bold; margin:6px 0;">
+                {value}</div>
+            <div style="color:#555; font-size:11px;">{sub}</div>
+        </div>"""
+    html += '</div>'
+    return html
+
+
+def zero_gamma_explanation_html():
+    """Static explanation of what 0 gamma means."""
+    return """
+    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        padding:16px; margin:12px 0;">
+        <div style="color:#888; font-size:11px; text-transform:uppercase;
+            letter-spacing:2px; margin-bottom:10px;">How to Use This</div>
+        <div style="display:flex; gap:16px;">
+            <div style="flex:1; border-right:1px solid #2a2a4a; padding-right:16px;">
+                <div style="color:#00c853; font-size:13px; font-weight:bold;
+                    margin-bottom:6px;">&#9650; SPX Above 0-Gamma</div>
+                <div style="color:#aaa; font-size:11px; line-height:1.5;">
+                    Dealers are long gamma. They buy when price drops, sell when it rises.
+                    This <b style="color:#fff;">dampens</b> moves. Expect range-bound,
+                    mean-reverting action. Fade moves, sell premium.</div>
+            </div>
+            <div style="flex:1; padding-left:16px;">
+                <div style="color:#ff1744; font-size:13px; font-weight:bold;
+                    margin-bottom:6px;">&#9660; SPX Below 0-Gamma</div>
+                <div style="color:#aaa; font-size:11px; line-height:1.5;">
+                    Dealers are short gamma. They sell when price drops, buy when it rises.
+                    This <b style="color:#fff;">amplifies</b> moves. Expect trending,
+                    explosive action. Ride momentum, buy 0DTE.</div>
+            </div>
+        </div>
+    </div>"""

@@ -21,6 +21,7 @@ st.markdown("""
 from gex_calculator import calculate_gex
 from close_signal import calculate_close_signal
 from contract_scanner import scan_contracts
+from signal_v2 import calculate_signal_v2, find_gex_flip_level
 from ui_components import (
     style_gex_table, create_gex_bar_chart, market_status_html,
     signal_badge_html, single_card_html,
@@ -31,6 +32,10 @@ from ui_components import (
     brrrr_signal_html, brrrr_confidence_meter_html,
     brrrr_conviction_guide_html, brrrr_strikes_html,
     brrrr_signal_components_html,
+    factor2_signal_html, factor2_confidence_html,
+    factor2_breakdown_html, factor2_flip_badge_html,
+    zero_gamma_header_html, zero_gamma_stats_html,
+    zero_gamma_explanation_html,
 )
 from config import (
     DATA_SOURCE, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM,
@@ -42,6 +47,8 @@ if "signal_history" not in st.session_state:
     st.session_state.signal_history = []
 if "premium_history" not in st.session_state:
     st.session_state.premium_history = []
+if "price_history" not in st.session_state:
+    st.session_state.price_history = []
 if "last_reset_date" not in st.session_state:
     st.session_state.last_reset_date = None
 
@@ -54,6 +61,7 @@ if st.session_state.last_reset_date != today_str:
     if now_et >= market_open:
         st.session_state.signal_history = []
         st.session_state.premium_history = []
+        st.session_state.price_history = []
         st.session_state.last_reset_date = today_str
 
 # --- Sidebar (matching reference layout) ---
@@ -185,10 +193,20 @@ if gex_table.empty:
     st.warning("No GEX data to display for the selected range.")
     st.stop()
 
-# --- Calculate close signal BEFORE tabs (shared by Close Direction + Scanner) ---
+# --- Calculate signals BEFORE tabs ---
 signal = calculate_close_signal(options_df, spot_price, gex_by_strike)
 
+# Track price history for momentum signal
 now_ts = datetime.now()
+st.session_state.price_history.append((now_ts, spot_price))
+if len(st.session_state.price_history) > 500:
+    st.session_state.price_history = st.session_state.price_history[-500:]
+
+# Factor 2 signal
+signal_v2 = calculate_signal_v2(options_df, spot_price, gex_by_strike, st.session_state.price_history)
+
+# 0 Gamma data
+flip_level, regime_info = find_gex_flip_level(gex_by_strike)
 st.session_state.signal_history.append(
     (now_ts, signal["composite_score"], signal["components"])
 )
@@ -201,8 +219,8 @@ if len(st.session_state.premium_history) > 500:
     st.session_state.premium_history = st.session_state.premium_history[-500:]
 
 # === TABBED LAYOUT ===
-tab_gex, tab_signal, tab_scanner, tab_brrrr = st.tabs([
-    "GEX Dashboard", "Close Direction", "Contract Scanner", "BRRRR"
+tab_gex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
+    "GEX Dashboard", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
 ])
 
 # --- GEX Dashboard Tab (original content) ---
@@ -382,6 +400,126 @@ with tab_brrrr:
         unsafe_allow_html=True,
     )
     st.markdown(brrrr_strikes_html(pick_contracts, pick_dir, spot_price), unsafe_allow_html=True)
+
+# --- Factor 2 Tab ---
+with tab_factor2:
+    # Big signal
+    st.markdown(factor2_signal_html(signal_v2), unsafe_allow_html=True)
+
+    # Confidence + Flip badge side by side
+    col_conf, col_flip = st.columns([3, 2])
+    with col_conf:
+        st.markdown(factor2_confidence_html(signal_v2["confidence"]), unsafe_allow_html=True)
+    with col_flip:
+        st.markdown(
+            factor2_flip_badge_html(signal_v2.get("flip_level"), spot_price),
+            unsafe_allow_html=True,
+        )
+
+    # Factor breakdown
+    st.markdown(factor2_breakdown_html(signal_v2), unsafe_allow_html=True)
+
+    # Top strikes (reuse scan_contracts data)
+    scan_for_f2 = scan_contracts(options_df, spot_price, signal)
+
+    if signal_v2["direction"] == "BUY":
+        f2_dir = "CALLS"
+        f2_contracts = scan_for_f2["calls"]
+    elif signal_v2["direction"] == "SELL":
+        f2_dir = "PUTS"
+        f2_contracts = scan_for_f2["puts"]
+    else:
+        call_top = scan_for_f2["calls"][0]["score"] if scan_for_f2["calls"] else 0
+        put_top = scan_for_f2["puts"][0]["score"] if scan_for_f2["puts"] else 0
+        if call_top >= put_top and scan_for_f2["calls"]:
+            f2_dir = "CALLS"
+            f2_contracts = scan_for_f2["calls"]
+        elif scan_for_f2["puts"]:
+            f2_dir = "PUTS"
+            f2_contracts = scan_for_f2["puts"]
+        else:
+            f2_dir = "CALLS"
+            f2_contracts = []
+
+    if signal_v2["direction"] == "NEUTRAL":
+        st.markdown(
+            '<div style="text-align:center; color:#888; font-size:13px; margin:8px 0;">'
+            'Signal is NEUTRAL — showing best available. '
+            '<span style="color:#ff9800; font-weight:bold;">Wait for conviction.</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        '<div style="color:#888; font-size:12px; text-transform:uppercase; '
+        'letter-spacing:2px; text-align:center; margin:16px 0 4px;">'
+        'Top Strikes</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(brrrr_strikes_html(f2_contracts, f2_dir, spot_price), unsafe_allow_html=True)
+
+# --- 0 Gamma Tab ---
+with tab_zgamma:
+    # Big 0-gamma display
+    st.markdown(zero_gamma_header_html(flip_level, spot_price), unsafe_allow_html=True)
+
+    # Stats cards
+    st.markdown(zero_gamma_stats_html(regime_info, spot_price), unsafe_allow_html=True)
+
+    # GEX by strike chart — horizontal bars with zero-cross highlighted
+    if "gex_by_strike" in regime_info and not regime_info["gex_by_strike"].empty:
+        import plotly.graph_objects as go_fig
+
+        gex_data = regime_info["gex_by_strike"]
+        strikes = gex_data.index.values
+        values = gex_data.values
+
+        colors = ["rgba(0,200,83,0.7)" if v > 0 else "rgba(255,23,68,0.7)" for v in values]
+
+        fig_gex = go_fig.Figure()
+        fig_gex.add_trace(go_fig.Bar(
+            y=strikes, x=values, orientation="h",
+            marker_color=colors,
+            hovertemplate="Strike: %{y}<br>GEX: %{x:,.0f}<extra></extra>",
+        ))
+
+        # Add zero line
+        fig_gex.add_vline(x=0, line_color="#555", line_width=1)
+
+        # Add flip level line
+        if flip_level:
+            fig_gex.add_hline(
+                y=flip_level, line_color="#ffc107", line_width=2,
+                line_dash="dash",
+                annotation_text=f"0-Gamma: {flip_level:,.1f}",
+                annotation_position="top right",
+                annotation_font_color="#ffc107",
+            )
+
+        # Add spot price line
+        fig_gex.add_hline(
+            y=spot_price, line_color="#90caf9", line_width=2,
+            annotation_text=f"SPX: {spot_price:,.1f}",
+            annotation_position="bottom right",
+            annotation_font_color="#90caf9",
+        )
+
+        fig_gex.update_layout(
+            title=dict(text="GEX by Strike", font=dict(color="#888", size=14)),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#aaa"),
+            height=500,
+            margin=dict(l=60, r=20, t=40, b=20),
+            xaxis=dict(gridcolor="rgba(255,255,255,0.05)", zeroline=False),
+            yaxis=dict(gridcolor="rgba(255,255,255,0.05)", zeroline=False),
+            showlegend=False,
+        )
+
+        st.plotly_chart(fig_gex, use_container_width=True)
+
+    # Explanation
+    st.markdown(zero_gamma_explanation_html(), unsafe_allow_html=True)
 
 # Auto-refresh logic
 if auto_refresh:
