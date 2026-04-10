@@ -1404,80 +1404,96 @@ def zero_gamma_explanation_html():
 # ========== 0DTE GEX TAB ==========
 
 def dte0_gex_header_html(flip_level, spot_price, info):
-    """Big 0DTE-only gamma flip display."""
-    if flip_level is None:
-        total_gex = info.get("total_gex", 0) if info else 0
-        regime = info.get("regime", "UNKNOWN") if info else "UNKNOWN"
-        if total_gex == 0:
-            return """
-            <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:16px;
-                padding:40px; text-align:center; margin:16px 0;">
-                <div style="color:#888; font-size:18px;">No 0DTE contracts found</div>
-                <div style="color:#555; font-size:13px; margin-top:8px;">
-                    Market may be closed or no same-day expiry available</div>
-            </div>"""
-        # No crossover but we have data — all one sign
-        zone_color = "#00c853" if regime == "POSITIVE" else "#ff1744"
-        return f"""
-        <div style="text-align:center; margin:16px 0;">
-            <div style="display:inline-block; background:#16213e; border:3px solid {zone_color};
-                border-radius:20px; padding:24px 40px;
-                box-shadow:0 0 40px {zone_color}33;">
-                <div style="color:{zone_color}; font-size:14px; font-weight:bold;
-                    text-transform:uppercase; letter-spacing:3px;">
-                    ALL {regime} GAMMA (0DTE)</div>
-                <div style="margin:12px 0;">
-                    <span style="color:#888; font-size:14px;">No flip level — entire 0DTE chain is {regime.lower()} gamma</span>
-                </div>
-            </div>
+    """Big 0DTE header — GEX Magnet as the hero number, flip level secondary."""
+    if not info or info.get("total_gex", 0) == 0:
+        return """
+        <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:16px;
+            padding:40px; text-align:center; margin:16px 0;">
+            <div style="color:#888; font-size:18px;">No 0DTE contracts found</div>
+            <div style="color:#555; font-size:13px; margin-top:8px;">
+                Market may be closed or no same-day expiry available</div>
         </div>"""
 
-    distance = spot_price - flip_level
-    above = distance > 0
+    magnet = info.get("max_gex_strike")
+    regime = info.get("regime", "UNKNOWN")
+    zone_color = "#00c853" if regime == "POSITIVE" else "#ff1744"
 
-    if above:
-        zone_color = "#00c853"
-        zone_label = "ABOVE 0DTE FLIP"
-        zone_desc = "0DTE dealers dampening moves — range-bound into close"
+    if magnet:
+        mag_dist = magnet - spot_price
+        mag_pct = abs(mag_dist) / spot_price * 100
+        mag_dir = "above" if mag_dist > 0 else "below"
     else:
-        zone_color = "#ff1744"
-        zone_label = "BELOW 0DTE FLIP"
-        zone_desc = "0DTE dealers amplifying moves — explosive into close"
+        mag_dist = 0
+        mag_pct = 0
+        mag_dir = ""
 
-    pct_dist = abs(distance) / spot_price * 100
+    # Flip level info (secondary)
+    flip_html = ""
+    if flip_level:
+        flip_dist = spot_price - flip_level
+        above_flip = flip_dist > 0
+        flip_color = "#00c853" if above_flip else "#ff1744"
+        flip_label = "ABOVE FLIP" if above_flip else "BELOW FLIP"
+        flip_desc = "Dealers dampening — range-bound" if above_flip else "Dealers amplifying — explosive"
+
+        flip_html = f"""
+        <div style="display:flex; justify-content:center; gap:24px; margin-top:14px;
+            padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="text-align:center;">
+                <div style="color:#888; font-size:10px; text-transform:uppercase;">0DTE Flip Level</div>
+                <div style="color:#ffc107; font-size:20px; font-weight:bold;">{flip_level:,.1f}</div>
+            </div>
+            <div style="text-align:center;">
+                <div style="color:#888; font-size:10px; text-transform:uppercase;">Regime</div>
+                <div style="color:{flip_color}; font-size:14px; font-weight:bold;
+                    margin-top:4px;">{flip_label}</div>
+                <div style="color:#888; font-size:10px;">{flip_desc}</div>
+            </div>
+            <div style="text-align:center;">
+                <div style="color:#888; font-size:10px; text-transform:uppercase;">SPX to Flip</div>
+                <div style="color:{flip_color}; font-size:20px; font-weight:bold;">
+                    {flip_dist:+.1f} pts</div>
+            </div>
+        </div>"""
+    else:
+        flip_html = f"""
+        <div style="text-align:center; margin-top:12px; padding-top:12px;
+            border-top:1px solid rgba(255,255,255,0.08);">
+            <span style="color:{zone_color}; font-size:12px; font-weight:bold;">
+                All {regime} gamma — no flip level in 0DTE chain</span>
+        </div>"""
 
     return f"""
     <div style="text-align:center; margin:16px 0;">
-        <div style="display:inline-block; background:#16213e; border:3px solid {zone_color};
-            border-radius:20px; padding:24px 40px;
-            box-shadow:0 0 40px {zone_color}33;">
-            <div style="color:{zone_color}; font-size:14px; font-weight:bold;
-                text-transform:uppercase; letter-spacing:3px;">{zone_label}</div>
-            <div style="margin:16px 0;">
-                <span style="color:#888; font-size:12px;">0DTE Gamma Flip</span>
-                <div style="color:#fff; font-size:42px; font-weight:900;
-                    text-shadow:0 0 20px {zone_color}44;">{flip_level:,.1f}</div>
-            </div>
+        <div style="display:inline-block; background:#16213e; border:3px solid #90caf9;
+            border-radius:20px; padding:28px 50px;
+            box-shadow:0 0 50px rgba(144,202,249,0.2);">
+            <div style="color:#90caf9; font-size:14px; font-weight:bold;
+                text-transform:uppercase; letter-spacing:3px;">0DTE GEX Magnet</div>
+            <div style="color:#fff; font-size:52px; font-weight:900; margin:8px 0;
+                text-shadow:0 0 30px rgba(144,202,249,0.3);">
+                {magnet:,.0f}</div>
             <div style="display:flex; justify-content:center; gap:30px; margin-top:8px;">
                 <div>
-                    <div style="color:#888; font-size:10px; text-transform:uppercase;">SPX</div>
+                    <div style="color:#888; font-size:10px; text-transform:uppercase;">SPX Now</div>
                     <div style="color:#fff; font-size:18px; font-weight:bold;">{spot_price:,.2f}</div>
                 </div>
                 <div>
                     <div style="color:#888; font-size:10px; text-transform:uppercase;">Distance</div>
-                    <div style="color:{zone_color}; font-size:18px; font-weight:bold;">
-                        {distance:+.1f} pts</div>
+                    <div style="color:#90caf9; font-size:18px; font-weight:bold;">
+                        {mag_dist:+.0f} pts {mag_dir}</div>
                 </div>
                 <div>
                     <div style="color:#888; font-size:10px; text-transform:uppercase;">% Away</div>
-                    <div style="color:{zone_color}; font-size:18px; font-weight:bold;">
-                        {pct_dist:.2f}%</div>
+                    <div style="color:#90caf9; font-size:18px; font-weight:bold;">
+                        {mag_pct:.2f}%</div>
                 </div>
             </div>
+            {flip_html}
         </div>
     </div>
     <div style="text-align:center; color:#888; font-size:12px; margin-top:4px;">
-        {zone_desc}</div>"""
+        Price is pulled toward the magnet strike — highest 0DTE dealer gamma exposure</div>"""
 
 
 def dte0_gex_stats_html(info, spot_price):
