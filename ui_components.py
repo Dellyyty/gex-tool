@@ -1427,73 +1427,64 @@ def dte0_gex_header_html(flip_level, spot_price, info):
         mag_pct = 0
         mag_dir = ""
 
-    # Flip level info (secondary)
-    flip_html = ""
+    # Flip level info (secondary) — NO leading indentation to avoid markdown code blocks
     if flip_level:
         flip_dist = spot_price - flip_level
         above_flip = flip_dist > 0
         flip_color = "#00c853" if above_flip else "#ff1744"
         flip_label = "ABOVE FLIP" if above_flip else "BELOW FLIP"
-        flip_desc = "Dealers dampening — range-bound" if above_flip else "Dealers amplifying — explosive"
+        flip_desc = "Dealers dampening" if above_flip else "Dealers amplifying"
 
-        flip_html = f"""
-        <div style="display:flex; justify-content:center; gap:24px; margin-top:14px;
-            padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
-            <div style="text-align:center;">
-                <div style="color:#888; font-size:10px; text-transform:uppercase;">0DTE Flip Level</div>
-                <div style="color:#ffc107; font-size:20px; font-weight:bold;">{flip_level:,.1f}</div>
-            </div>
-            <div style="text-align:center;">
-                <div style="color:#888; font-size:10px; text-transform:uppercase;">Regime</div>
-                <div style="color:{flip_color}; font-size:14px; font-weight:bold;
-                    margin-top:4px;">{flip_label}</div>
-                <div style="color:#888; font-size:10px;">{flip_desc}</div>
-            </div>
-            <div style="text-align:center;">
-                <div style="color:#888; font-size:10px; text-transform:uppercase;">SPX to Flip</div>
-                <div style="color:{flip_color}; font-size:20px; font-weight:bold;">
-                    {flip_dist:+.1f} pts</div>
-            </div>
-        </div>"""
+        flip_html = (
+            f'<div style="display:flex; justify-content:center; gap:24px; margin-top:14px;'
+            f' padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">'
+            f'<div style="text-align:center;">'
+            f'<div style="color:#888; font-size:10px; text-transform:uppercase;">0DTE Flip</div>'
+            f'<div style="color:#ffc107; font-size:20px; font-weight:bold;">{flip_level:,.1f}</div>'
+            f'</div>'
+            f'<div style="text-align:center;">'
+            f'<div style="color:#888; font-size:10px; text-transform:uppercase;">Regime</div>'
+            f'<div style="color:{flip_color}; font-size:14px; font-weight:bold; margin-top:4px;">{flip_label}</div>'
+            f'<div style="color:#888; font-size:10px;">{flip_desc}</div>'
+            f'</div>'
+            f'<div style="text-align:center;">'
+            f'<div style="color:#888; font-size:10px; text-transform:uppercase;">SPX to Flip</div>'
+            f'<div style="color:{flip_color}; font-size:20px; font-weight:bold;">{flip_dist:+.1f} pts</div>'
+            f'</div></div>'
+        )
     else:
-        flip_html = f"""
-        <div style="text-align:center; margin-top:12px; padding-top:12px;
-            border-top:1px solid rgba(255,255,255,0.08);">
-            <span style="color:{zone_color}; font-size:12px; font-weight:bold;">
-                All {regime} gamma — no flip level in 0DTE chain</span>
-        </div>"""
+        flip_html = (
+            f'<div style="text-align:center; margin-top:12px; padding-top:12px;'
+            f' border-top:1px solid rgba(255,255,255,0.08);">'
+            f'<span style="color:{zone_color}; font-size:12px; font-weight:bold;">'
+            f'All {regime} gamma — no flip level in 0DTE chain</span></div>'
+        )
 
-    return f"""
-    <div style="text-align:center; margin:16px 0;">
-        <div style="display:inline-block; background:#16213e; border:3px solid #90caf9;
-            border-radius:20px; padding:28px 50px;
-            box-shadow:0 0 50px rgba(144,202,249,0.2);">
-            <div style="color:#90caf9; font-size:14px; font-weight:bold;
-                text-transform:uppercase; letter-spacing:3px;">0DTE GEX Magnet</div>
-            <div style="color:#fff; font-size:52px; font-weight:900; margin:8px 0;
-                text-shadow:0 0 30px rgba(144,202,249,0.3);">
-                {magnet:,.0f}</div>
-            <div style="display:flex; justify-content:center; gap:30px; margin-top:8px;">
-                <div>
-                    <div style="color:#888; font-size:10px; text-transform:uppercase;">SPX Now</div>
-                    <div style="color:#fff; font-size:18px; font-weight:bold;">{spot_price:,.2f}</div>
-                </div>
-                <div>
-                    <div style="color:#888; font-size:10px; text-transform:uppercase;">Distance</div>
-                    <div style="color:#90caf9; font-size:18px; font-weight:bold;">
-                        {mag_dist:+.0f} pts {mag_dir}</div>
-                </div>
-                <div>
-                    <div style="color:#888; font-size:10px; text-transform:uppercase;">% Away</div>
-                    <div style="color:#90caf9; font-size:18px; font-weight:bold;">
-                        {mag_pct:.2f}%</div>
-                </div>
-            </div>
-            {flip_html}
-        </div>
-    </div>
-    <div style="text-align:center; color:#888; font-size:12px; margin-top:4px;">
-        Price is pulled toward the magnet strike — highest 0DTE dealer gamma exposure</div>"""
+    return (
+        '<div style="text-align:center; margin:16px 0;">'
+        '<div style="display:inline-block; background:#16213e; border:3px solid #90caf9;'
+        ' border-radius:20px; padding:28px 50px;'
+        ' box-shadow:0 0 50px rgba(144,202,249,0.2);">'
+        '<div style="color:#90caf9; font-size:14px; font-weight:bold;'
+        ' text-transform:uppercase; letter-spacing:3px;">0DTE GEX Magnet</div>'
+        f'<div style="color:#fff; font-size:52px; font-weight:900; margin:8px 0;'
+        f' text-shadow:0 0 30px rgba(144,202,249,0.3);">{magnet:,.0f}</div>'
+        '<div style="display:flex; justify-content:center; gap:30px; margin-top:8px;">'
+        '<div>'
+        '<div style="color:#888; font-size:10px; text-transform:uppercase;">SPX Now</div>'
+        f'<div style="color:#fff; font-size:18px; font-weight:bold;">{spot_price:,.2f}</div>'
+        '</div><div>'
+        '<div style="color:#888; font-size:10px; text-transform:uppercase;">Distance</div>'
+        f'<div style="color:#90caf9; font-size:18px; font-weight:bold;">{mag_dist:+.0f} pts {mag_dir}</div>'
+        '</div><div>'
+        '<div style="color:#888; font-size:10px; text-transform:uppercase;">% Away</div>'
+        f'<div style="color:#90caf9; font-size:18px; font-weight:bold;">{mag_pct:.2f}%</div>'
+        '</div></div>'
+        f'{flip_html}'
+        '</div></div>'
+        '<div style="text-align:center; color:#888; font-size:12px; margin-top:4px;">'
+        'Price is pulled toward the magnet strike — highest 0DTE dealer gamma exposure</div>'
+    )
 
 
 def dte0_gex_stats_html(info, spot_price):
