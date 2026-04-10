@@ -1399,3 +1399,184 @@ def zero_gamma_explanation_html():
             </div>
         </div>
     </div>"""
+
+
+# ========== 0DTE GEX TAB ==========
+
+def dte0_gex_header_html(flip_level, spot_price, info):
+    """Big 0DTE-only gamma flip display."""
+    if flip_level is None:
+        total_gex = info.get("total_gex", 0) if info else 0
+        regime = info.get("regime", "UNKNOWN") if info else "UNKNOWN"
+        if total_gex == 0:
+            return """
+            <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:16px;
+                padding:40px; text-align:center; margin:16px 0;">
+                <div style="color:#888; font-size:18px;">No 0DTE contracts found</div>
+                <div style="color:#555; font-size:13px; margin-top:8px;">
+                    Market may be closed or no same-day expiry available</div>
+            </div>"""
+        # No crossover but we have data — all one sign
+        zone_color = "#00c853" if regime == "POSITIVE" else "#ff1744"
+        return f"""
+        <div style="text-align:center; margin:16px 0;">
+            <div style="display:inline-block; background:#16213e; border:3px solid {zone_color};
+                border-radius:20px; padding:24px 40px;
+                box-shadow:0 0 40px {zone_color}33;">
+                <div style="color:{zone_color}; font-size:14px; font-weight:bold;
+                    text-transform:uppercase; letter-spacing:3px;">
+                    ALL {regime} GAMMA (0DTE)</div>
+                <div style="margin:12px 0;">
+                    <span style="color:#888; font-size:14px;">No flip level — entire 0DTE chain is {regime.lower()} gamma</span>
+                </div>
+            </div>
+        </div>"""
+
+    distance = spot_price - flip_level
+    above = distance > 0
+
+    if above:
+        zone_color = "#00c853"
+        zone_label = "ABOVE 0DTE FLIP"
+        zone_desc = "0DTE dealers dampening moves — range-bound into close"
+    else:
+        zone_color = "#ff1744"
+        zone_label = "BELOW 0DTE FLIP"
+        zone_desc = "0DTE dealers amplifying moves — explosive into close"
+
+    pct_dist = abs(distance) / spot_price * 100
+
+    return f"""
+    <div style="text-align:center; margin:16px 0;">
+        <div style="display:inline-block; background:#16213e; border:3px solid {zone_color};
+            border-radius:20px; padding:24px 40px;
+            box-shadow:0 0 40px {zone_color}33;">
+            <div style="color:{zone_color}; font-size:14px; font-weight:bold;
+                text-transform:uppercase; letter-spacing:3px;">{zone_label}</div>
+            <div style="margin:16px 0;">
+                <span style="color:#888; font-size:12px;">0DTE Gamma Flip</span>
+                <div style="color:#fff; font-size:42px; font-weight:900;
+                    text-shadow:0 0 20px {zone_color}44;">{flip_level:,.1f}</div>
+            </div>
+            <div style="display:flex; justify-content:center; gap:30px; margin-top:8px;">
+                <div>
+                    <div style="color:#888; font-size:10px; text-transform:uppercase;">SPX</div>
+                    <div style="color:#fff; font-size:18px; font-weight:bold;">{spot_price:,.2f}</div>
+                </div>
+                <div>
+                    <div style="color:#888; font-size:10px; text-transform:uppercase;">Distance</div>
+                    <div style="color:{zone_color}; font-size:18px; font-weight:bold;">
+                        {distance:+.1f} pts</div>
+                </div>
+                <div>
+                    <div style="color:#888; font-size:10px; text-transform:uppercase;">% Away</div>
+                    <div style="color:{zone_color}; font-size:18px; font-weight:bold;">
+                        {pct_dist:.2f}%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="text-align:center; color:#888; font-size:12px; margin-top:4px;">
+        {zone_desc}</div>"""
+
+
+def dte0_gex_stats_html(info, spot_price):
+    """Stats cards for the 0DTE GEX tab — includes OI/volume and walls."""
+    if not info:
+        return ""
+
+    from gex_calculator import format_gex_value
+
+    total = info.get("total_gex", 0)
+    regime = info.get("regime", "UNKNOWN")
+    regime_color = "#00c853" if regime == "POSITIVE" else "#ff1744"
+    call_wall = info.get("call_wall")
+    put_wall = info.get("put_wall")
+    max_strike = info.get("max_gex_strike")
+
+    row1 = [
+        ("0DTE Net GEX", format_gex_value(total), regime, regime_color),
+        ("GEX Magnet", f"{max_strike:,.0f}" if max_strike else "--",
+         f"{max_strike - spot_price:+.0f} pts" if max_strike else "", "#90caf9"),
+        ("Call Wall", f"{call_wall:,.0f}" if call_wall else "--",
+         f"{call_wall - spot_price:+.0f} pts (resistance)" if call_wall else "", "#00c853"),
+        ("Put Wall", f"{put_wall:,.0f}" if put_wall else "--",
+         f"{put_wall - spot_price:+.0f} pts (support)" if put_wall else "", "#ff1744"),
+    ]
+
+    total_call_oi = info.get("total_call_oi", 0)
+    total_put_oi = info.get("total_put_oi", 0)
+    total_call_vol = info.get("total_call_vol", 0)
+    total_put_vol = info.get("total_put_vol", 0)
+    pc_oi = total_put_oi / total_call_oi if total_call_oi > 0 else 0
+    pc_vol = total_put_vol / total_call_vol if total_call_vol > 0 else 0
+
+    row2 = [
+        ("0DTE Call OI", f"{total_call_oi:,}", f"Vol: {total_call_vol:,}", "#00c853"),
+        ("0DTE Put OI", f"{total_put_oi:,}", f"Vol: {total_put_vol:,}", "#ff1744"),
+        ("P/C OI Ratio", f"{pc_oi:.2f}",
+         "Bearish" if pc_oi > 1.2 else "Bullish" if pc_oi < 0.8 else "Neutral",
+         "#ff1744" if pc_oi > 1.2 else "#00c853" if pc_oi < 0.8 else "#888"),
+        ("P/C Vol Ratio", f"{pc_vol:.2f}",
+         "Bearish" if pc_vol > 1.2 else "Bullish" if pc_vol < 0.8 else "Neutral",
+         "#ff1744" if pc_vol > 1.2 else "#00c853" if pc_vol < 0.8 else "#888"),
+    ]
+
+    html = ""
+    for row in [row1, row2]:
+        html += '<div style="display:flex; gap:10px; margin:8px 0;">'
+        for label, value, sub, color in row:
+            html += f"""<div style="flex:1; background:#16213e; border:1px solid #2a2a4a;
+                border-radius:10px; padding:12px; text-align:center;">
+                <div style="color:#666; font-size:10px; text-transform:uppercase;
+                    letter-spacing:1px;">{label}</div>
+                <div style="color:{color}; font-size:20px; font-weight:bold; margin:4px 0;">
+                    {value}</div>
+                <div style="color:#555; font-size:11px;">{sub}</div>
+            </div>"""
+        html += '</div>'
+    return html
+
+
+def dte0_gex_vs_all_html(flip_0dte, flip_all, spot_price):
+    """Compare 0DTE flip vs all-expiry flip — shows divergence."""
+    if flip_0dte is None and flip_all is None:
+        return ""
+
+    dte0_str = f"{flip_0dte:,.1f}" if flip_0dte else "N/A"
+    all_str = f"{flip_all:,.1f}" if flip_all else "N/A"
+
+    if flip_0dte and flip_all:
+        diff = flip_0dte - flip_all
+        if abs(diff) < 5:
+            note = "Aligned — both timeframes agree"
+            note_color = "#00c853"
+        elif diff > 0:
+            note = f"0DTE flip is {diff:+.1f} pts ABOVE all-expiry — intraday more bullish"
+            note_color = "#00c853"
+        else:
+            note = f"0DTE flip is {diff:+.1f} pts BELOW all-expiry — intraday more bearish"
+            note_color = "#ff1744"
+    else:
+        note = "Cannot compare — one timeframe has no flip level"
+        note_color = "#888"
+
+    return f"""
+    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        padding:14px 18px; margin:12px 0;">
+        <div style="color:#888; font-size:11px; text-transform:uppercase;
+            letter-spacing:2px; margin-bottom:10px;">0DTE vs All-Expiry Flip</div>
+        <div style="display:flex; gap:20px; justify-content:center; align-items:center;">
+            <div style="text-align:center;">
+                <div style="color:#ffc107; font-size:10px; text-transform:uppercase;">0DTE Flip</div>
+                <div style="color:#ffc107; font-size:24px; font-weight:bold;">{dte0_str}</div>
+            </div>
+            <div style="color:#555; font-size:20px;">vs</div>
+            <div style="text-align:center;">
+                <div style="color:#90caf9; font-size:10px; text-transform:uppercase;">All-Expiry Flip</div>
+                <div style="color:#90caf9; font-size:24px; font-weight:bold;">{all_str}</div>
+            </div>
+        </div>
+        <div style="text-align:center; color:{note_color}; font-size:12px;
+            margin-top:8px;">{note}</div>
+    </div>"""

@@ -305,6 +305,88 @@ def find_gex_flip_level(gex_by_strike):
     return flip_level, info
 
 
+def calculate_0dte_gex(options_df, spot_price):
+    """Calculate GEX from only 0DTE contracts and find the intraday flip level.
+
+    This is different from the main 0 Gamma tab which uses ALL expirations.
+    0DTE GEX shows where dealer hedging pressure is from TODAY's expiring options only —
+    the most relevant data for same-day trading.
+    """
+    if options_df.empty:
+        return None, {}
+
+    zero_dte = options_df[options_df["dte"] <= 0].copy()
+    if zero_dte.empty:
+        # Fall back to next-day expiry
+        zero_dte = options_df[options_df["dte"] <= 1].copy()
+    if zero_dte.empty:
+        return None, {}
+
+    # Calculate GEX per strike for 0DTE only
+    zero_dte["call_gex"] = zero_dte["call_OI"] * zero_dte["call_gamma"] * 100
+    zero_dte["put_gex"] = -zero_dte["put_OI"] * zero_dte["put_gamma"] * 100
+    zero_dte["net_gex"] = zero_dte["call_gex"] + zero_dte["put_gex"]
+
+    gex_by_strike = zero_dte.groupby("strike")["net_gex"].sum().sort_index()
+
+    if gex_by_strike.empty:
+        return None, {}
+
+    strikes = gex_by_strike.index.values
+    values = gex_by_strike.values
+
+    # Find flip level (zero crossing)
+    flip_level = None
+    for i in range(len(strikes) - 1):
+        if values[i] * values[i + 1] < 0:
+            s1, s2 = strikes[i], strikes[i + 1]
+            v1, v2 = values[i], values[i + 1]
+            flip_level = s1 + (s2 - s1) * (-v1) / (v2 - v1)
+            break
+
+    total_gex = values.sum()
+    positive_gex = values[values > 0].sum()
+    negative_gex = values[values < 0].sum()
+    max_gex_idx = np.argmax(values) if len(values) > 0 else 0
+    max_gex_strike = float(strikes[max_gex_idx])
+    min_gex_idx = np.argmin(values) if len(values) > 0 else 0
+    put_wall_strike = float(strikes[min_gex_idx])
+
+    # Call wall = strike with highest call OI above spot
+    above_spot = zero_dte[zero_dte["strike"] > spot_price]
+    call_wall = float(above_spot.loc[above_spot["call_OI"].idxmax(), "strike"]) if not above_spot.empty and above_spot["call_OI"].max() > 0 else None
+
+    # Put wall = strike with highest put OI below spot
+    below_spot = zero_dte[zero_dte["strike"] <= spot_price]
+    put_wall = float(below_spot.loc[below_spot["put_OI"].idxmax(), "strike"]) if not below_spot.empty and below_spot["put_OI"].max() > 0 else None
+
+    # Total 0DTE contracts
+    total_call_oi = int(zero_dte["call_OI"].sum())
+    total_put_oi = int(zero_dte["put_OI"].sum())
+    total_call_vol = int(zero_dte["call_volume"].sum())
+    total_put_vol = int(zero_dte["put_volume"].sum())
+
+    info = {
+        "flip_level": round(flip_level, 1) if flip_level else None,
+        "total_gex": total_gex,
+        "positive_gex": positive_gex,
+        "negative_gex": negative_gex,
+        "max_gex_strike": max_gex_strike,
+        "put_wall_strike": put_wall_strike,
+        "call_wall": call_wall,
+        "put_wall": put_wall,
+        "regime": "POSITIVE" if total_gex > 0 else "NEGATIVE",
+        "gex_by_strike": gex_by_strike,
+        "total_call_oi": total_call_oi,
+        "total_put_oi": total_put_oi,
+        "total_call_vol": total_call_vol,
+        "total_put_vol": total_put_vol,
+        "num_strikes": len(strikes),
+    }
+
+    return flip_level, info
+
+
 def _empty_result():
     return {
         "direction": "NEUTRAL",

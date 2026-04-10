@@ -21,7 +21,7 @@ st.markdown("""
 from gex_calculator import calculate_gex
 from close_signal import calculate_close_signal
 from contract_scanner import scan_contracts
-from signal_v2 import calculate_signal_v2, find_gex_flip_level
+from signal_v2 import calculate_signal_v2, find_gex_flip_level, calculate_0dte_gex
 from ui_components import (
     style_gex_table, create_gex_bar_chart, market_status_html,
     signal_badge_html, single_card_html,
@@ -36,6 +36,7 @@ from ui_components import (
     factor2_breakdown_html, factor2_flip_badge_html,
     zero_gamma_header_html, zero_gamma_stats_html,
     zero_gamma_explanation_html,
+    dte0_gex_header_html, dte0_gex_stats_html, dte0_gex_vs_all_html,
 )
 from config import (
     DATA_SOURCE, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM,
@@ -205,8 +206,11 @@ if len(st.session_state.price_history) > 500:
 # Factor 2 signal
 signal_v2 = calculate_signal_v2(options_df, spot_price, gex_by_strike, st.session_state.price_history)
 
-# 0 Gamma data
+# 0 Gamma data (all expiry)
 flip_level, regime_info = find_gex_flip_level(gex_by_strike)
+
+# 0DTE-only GEX
+flip_0dte, info_0dte = calculate_0dte_gex(options_df, spot_price)
 st.session_state.signal_history.append(
     (now_ts, signal["composite_score"], signal["components"])
 )
@@ -219,8 +223,8 @@ if len(st.session_state.premium_history) > 500:
     st.session_state.premium_history = st.session_state.premium_history[-500:]
 
 # === TABBED LAYOUT ===
-tab_gex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
-    "GEX Dashboard", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
+tab_gex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma, tab_0dte_gex = st.tabs([
+    "GEX Dashboard", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma", "0DTE GEX"
 ])
 
 # --- GEX Dashboard Tab (original content) ---
@@ -517,6 +521,79 @@ with tab_zgamma:
         )
 
         st.plotly_chart(fig_gex, use_container_width=True)
+
+    # Explanation
+    st.markdown(zero_gamma_explanation_html(), unsafe_allow_html=True)
+
+# --- 0DTE GEX Tab ---
+with tab_0dte_gex:
+    # Big 0DTE flip display
+    st.markdown(dte0_gex_header_html(flip_0dte, spot_price, info_0dte), unsafe_allow_html=True)
+
+    # Stats cards (OI, volume, walls)
+    st.markdown(dte0_gex_stats_html(info_0dte, spot_price), unsafe_allow_html=True)
+
+    # 0DTE vs All-expiry flip comparison
+    st.markdown(dte0_gex_vs_all_html(flip_0dte, flip_level, spot_price), unsafe_allow_html=True)
+
+    # 0DTE GEX by strike chart
+    if info_0dte and "gex_by_strike" in info_0dte and not info_0dte["gex_by_strike"].empty:
+        import plotly.graph_objects as go_0dte
+
+        gex_data = info_0dte["gex_by_strike"]
+        strikes = gex_data.index.values
+        values = gex_data.values
+
+        colors = ["rgba(0,200,83,0.7)" if v > 0 else "rgba(255,23,68,0.7)" for v in values]
+
+        fig_0dte = go_0dte.Figure()
+        fig_0dte.add_trace(go_0dte.Bar(
+            y=strikes, x=values, orientation="h",
+            marker_color=colors,
+            hovertemplate="Strike: %{y}<br>GEX: %{x:,.0f}<extra></extra>",
+        ))
+
+        fig_0dte.add_vline(x=0, line_color="#555", line_width=1)
+
+        if flip_0dte:
+            fig_0dte.add_hline(
+                y=flip_0dte, line_color="#ffc107", line_width=2,
+                line_dash="dash",
+                annotation_text=f"0DTE Flip: {flip_0dte:,.1f}",
+                annotation_position="top right",
+                annotation_font_color="#ffc107",
+            )
+
+        fig_0dte.add_hline(
+            y=spot_price, line_color="#90caf9", line_width=2,
+            annotation_text=f"SPX: {spot_price:,.1f}",
+            annotation_position="bottom right",
+            annotation_font_color="#90caf9",
+        )
+
+        # Also show all-expiry flip for comparison
+        if flip_level and flip_level != flip_0dte:
+            fig_0dte.add_hline(
+                y=flip_level, line_color="#90caf9", line_width=1,
+                line_dash="dot",
+                annotation_text=f"All-Exp Flip: {flip_level:,.1f}",
+                annotation_position="top left",
+                annotation_font_color="#90caf944",
+            )
+
+        fig_0dte.update_layout(
+            title=dict(text="0DTE GEX by Strike", font=dict(color="#888", size=14)),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#aaa"),
+            height=500,
+            margin=dict(l=60, r=20, t=40, b=20),
+            xaxis=dict(gridcolor="rgba(255,255,255,0.05)", zeroline=False),
+            yaxis=dict(gridcolor="rgba(255,255,255,0.05)", zeroline=False),
+            showlegend=False,
+        )
+
+        st.plotly_chart(fig_0dte, use_container_width=True)
 
     # Explanation
     st.markdown(zero_gamma_explanation_html(), unsafe_allow_html=True)
