@@ -265,8 +265,13 @@ if len(st.session_state.price_history) > 500:
 # Factor 2 signal
 signal_v2 = calculate_signal_v2(options_df, spot_price, gex_by_strike, st.session_state.price_history)
 
-# 0 Gamma data (all expiry)
-flip_level, regime_info = find_gex_flip_level(gex_by_strike)
+# 0 Gamma data (all expiry) — use FULL chain, not filtered strikes
+_full_df = options_df.copy()
+_full_df["call_gex"] = _full_df["call_OI"] * _full_df["call_gamma"] * 100
+_full_df["put_gex"] = -_full_df["put_OI"] * _full_df["put_gamma"] * 100
+_full_df["net_gex"] = _full_df["call_gex"] + _full_df["put_gex"]
+gex_by_strike_full = _full_df.groupby("strike")["net_gex"].sum().sort_index()
+flip_level, regime_info = find_gex_flip_level(gex_by_strike_full)
 
 # 0DTE-only GEX
 flip_0dte, info_0dte = calculate_0dte_gex(options_df, spot_price)
