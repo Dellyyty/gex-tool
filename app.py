@@ -144,7 +144,7 @@ with st.sidebar:
     total_strikes = strikes_above + strikes_below + 1
     st.info(f"Total: {total_strikes} strikes | Up to {MAX_DTE} days")
 
-    auto_refresh = st.checkbox("Auto-refresh every 30s", value=False)
+    auto_refresh = st.checkbox("Auto-refresh every 20s", value=False)
     manual_refresh = st.button("Manual Refresh Now")
 
     st.markdown("---")
@@ -637,7 +637,7 @@ with tab_0dte_gex:
                 line_dash="dot",
                 annotation_text=f"All-Exp Flip: {flip_level:,.1f}",
                 annotation_position="top left",
-                annotation_font_color="#90caf944",
+                annotation_font_color="rgba(144,202,249,0.4)",
             )
 
         fig_0dte.update_layout(
