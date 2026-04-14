@@ -15,7 +15,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
     .stApp { background-color: #09090b; }
-    .block-container { padding-top: 2rem; padding-left: 1.5rem; padding-right: 1.5rem; }
+    .block-container { padding-top: 0.5rem; padding-left: 1.5rem; padding-right: 1.5rem; }
     div[data-testid="stSidebarContent"] { background-color: #0c0c0e; border-right: 1px solid #1c1c1e; }
 
     /* Global font */
