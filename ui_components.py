@@ -1467,12 +1467,14 @@ def dte0_gex_header_html(flip_level, spot_price, info):
         mag_dir = ""
 
     # Flip level info (secondary)
+    flip_estimated = info.get("flip_estimated", False)
     if flip_level:
         flip_dist = spot_price - flip_level
         above_flip = flip_dist > 0
         flip_color = S_GREEN if above_flip else S_RED
         flip_label = "ABOVE FLIP" if above_flip else "BELOW FLIP"
         flip_desc = "Dealers dampening" if above_flip else "Dealers amplifying"
+        flip_prefix = "≤ " if flip_estimated else ""
 
         flip_html = (
             f'<div style="display:flex; justify-content:center; gap:24px; margin-top:16px;'
@@ -1480,7 +1482,7 @@ def dte0_gex_header_html(flip_level, spot_price, info):
             f'<div style="text-align:center;">'
             f'<div style="color:{S_DIM}; font-size:10px; font-weight:500; text-transform:uppercase;'
             f' letter-spacing:1px;">0DTE Flip</div>'
-            f'<div style="color:{S_YELLOW}; font-size:20px; font-weight:700;">{flip_level:,.1f}</div>'
+            f'<div style="color:{S_YELLOW}; font-size:20px; font-weight:700;">{flip_prefix}{flip_level:,.1f}</div>'
             f'</div>'
             f'<div style="text-align:center;">'
             f'<div style="color:{S_DIM}; font-size:10px; font-weight:500; text-transform:uppercase;'
@@ -1588,23 +1590,23 @@ def dte0_gex_vs_all_html(flip_0dte, flip_all, spot_price):
     if flip_0dte is None and flip_all is None:
         return ""
 
-    dte0_str = f"{flip_0dte:,.1f}" if flip_0dte else "N/A"
-    all_str = f"{flip_all:,.1f}" if flip_all else "N/A"
+    dte0_str = f"{flip_0dte:,.1f}" if flip_0dte is not None else "N/A"
+    all_str = f"{flip_all:,.1f}" if flip_all is not None else "N/A"
 
-    if flip_0dte and flip_all:
+    if flip_0dte is not None and flip_all is not None:
         diff = flip_0dte - flip_all
         if abs(diff) < 5:
             note = "Aligned — both timeframes agree"
-            note_color = "#00c853"
+            note_color = S_GREEN
         elif diff > 0:
             note = f"0DTE flip is {diff:+.1f} pts ABOVE all-expiry — intraday more bullish"
-            note_color = "#00c853"
+            note_color = S_GREEN
         else:
             note = f"0DTE flip is {diff:+.1f} pts BELOW all-expiry — intraday more bearish"
-            note_color = "#ff1744"
+            note_color = S_RED
     else:
         note = "Cannot compare — one timeframe has no flip level"
-        note_color = "#888"
+        note_color = S_MUTED
 
     return f"""
     <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;

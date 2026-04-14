@@ -277,12 +277,21 @@ def find_gex_flip_level(gex_by_strike):
     values = sorted_gex.values
 
     flip_level = None
+    flip_estimated = False
     for i in range(len(strikes) - 1):
         if values[i] * values[i + 1] < 0:
             s1, s2 = strikes[i], strikes[i + 1]
             v1, v2 = values[i], values[i + 1]
             flip_level = s1 + (s2 - s1) * (-v1) / (v2 - v1)
             break
+
+    # Fallback: if no crossover, flip is beyond the strike range
+    if flip_level is None:
+        flip_estimated = True
+        if values.sum() > 0:
+            flip_level = float(strikes[0])   # All positive → flip at/below lowest strike
+        else:
+            flip_level = float(strikes[-1])  # All negative → flip at/above highest strike
 
     # Determine gamma regime
     total_gex = values.sum()
@@ -293,7 +302,8 @@ def find_gex_flip_level(gex_by_strike):
     max_gex_strike = strikes[np.argmax(values)] if len(values) > 0 else None
 
     info = {
-        "flip_level": round(flip_level, 1) if flip_level else None,
+        "flip_level": round(flip_level, 1),
+        "flip_estimated": flip_estimated,
         "total_gex": total_gex,
         "positive_gex": positive_gex,
         "negative_gex": negative_gex,
@@ -337,12 +347,21 @@ def calculate_0dte_gex(options_df, spot_price):
 
     # Find flip level (zero crossing)
     flip_level = None
+    flip_estimated = False
     for i in range(len(strikes) - 1):
         if values[i] * values[i + 1] < 0:
             s1, s2 = strikes[i], strikes[i + 1]
             v1, v2 = values[i], values[i + 1]
             flip_level = s1 + (s2 - s1) * (-v1) / (v2 - v1)
             break
+
+    # Fallback: if no crossover, flip is beyond the strike range
+    if flip_level is None:
+        flip_estimated = True
+        if values.sum() > 0:
+            flip_level = float(strikes[0])   # All positive → flip at/below lowest strike
+        else:
+            flip_level = float(strikes[-1])  # All negative → flip at/above highest strike
 
     total_gex = values.sum()
     positive_gex = values[values > 0].sum()
@@ -367,7 +386,8 @@ def calculate_0dte_gex(options_df, spot_price):
     total_put_vol = int(zero_dte["put_volume"].sum())
 
     info = {
-        "flip_level": round(flip_level, 1) if flip_level else None,
+        "flip_level": round(flip_level, 1),
+        "flip_estimated": flip_estimated,
         "total_gex": total_gex,
         "positive_gex": positive_gex,
         "negative_gex": negative_gex,
