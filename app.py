@@ -9,12 +9,71 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Dark theme CSS
+# shadcn-inspired dark theme CSS
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; }
-    .block-container { padding-top: 2.5rem; padding-left: 1rem; padding-right: 1rem; }
-    div[data-testid="stSidebarContent"] { background-color: #16213e; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+    .stApp { background-color: #09090b; }
+    .block-container { padding-top: 2rem; padding-left: 1.5rem; padding-right: 1.5rem; }
+    div[data-testid="stSidebarContent"] { background-color: #0c0c0e; border-right: 1px solid #1c1c1e; }
+
+    /* Global font */
+    .stApp, .stMarkdown, .stMarkdown p, .stMarkdown div {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
+
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0px;
+        background: #0c0c0e;
+        border-radius: 8px;
+        padding: 4px;
+        border: 1px solid #1c1c1e;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 13px;
+        font-weight: 500;
+        color: #71717a;
+        letter-spacing: 0;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #18181b !important;
+        color: #fafafa !important;
+        border-bottom: none !important;
+    }
+    .stTabs [data-baseweb="tab-highlight"] { display: none; }
+    .stTabs [data-baseweb="tab-border"] { display: none; }
+
+    /* Sidebar tweaks */
+    div[data-testid="stSidebarContent"] .stSlider label,
+    div[data-testid="stSidebarContent"] .stCheckbox label,
+    div[data-testid="stSidebarContent"] .stMarkdown p {
+        font-family: 'Inter', sans-serif !important;
+        color: #a1a1aa;
+    }
+
+    /* Button styling */
+    .stButton > button {
+        background: #18181b;
+        border: 1px solid #27272a;
+        border-radius: 6px;
+        color: #fafafa;
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 500;
+        font-size: 13px;
+        transition: all 0.15s ease;
+    }
+    .stButton > button:hover {
+        background: #27272a;
+        border-color: #3f3f46;
+    }
+
+    /* Plotly chart backgrounds */
+    .js-plotly-plot .plotly .bg { fill: transparent !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -171,9 +230,9 @@ if options_df.empty:
 # --- SPX price header ---
 st.markdown(
     f'<div style="display:flex; align-items:baseline; gap:16px;">'
-    f'<span style="color:#ccc; font-size:16px;">SPX</span>'
-    f'<span style="color:#fff; font-size:28px; font-weight:bold;">${spot_price:,.2f}</span>'
-    f'<span style="color:#666; font-size:12px;">Last refresh: {datetime.now().strftime("%H:%M:%S")}</span>'
+    f'<span style="color:#a1a1aa; font-size:14px; font-weight:500; font-family:Inter,sans-serif;">SPX</span>'
+    f'<span style="color:#fafafa; font-size:28px; font-weight:700; font-family:Inter,sans-serif; letter-spacing:-1px;">${spot_price:,.2f}</span>'
+    f'<span style="color:#52525b; font-size:12px; font-family:Inter,sans-serif;">Last refresh: {datetime.now().strftime("%H:%M:%S")}</span>'
     f'</div>',
     unsafe_allow_html=True,
 )

@@ -5,6 +5,46 @@ from datetime import datetime
 import pytz
 from gex_calculator import format_gex_value
 
+# === shadcn-inspired style constants ===
+S_BG = "#09090b"           # page background
+S_CARD = "#0c0c0e"         # card background
+S_CARD_HOVER = "#18181b"   # card hover / elevated
+S_BORDER = "#1c1c1e"       # subtle border
+S_BORDER_HOVER = "#27272a" # hover border
+S_TEXT = "#fafafa"          # primary text
+S_MUTED = "#a1a1aa"        # muted text
+S_DIM = "#52525b"          # dim text / labels
+S_GREEN = "#22c55e"        # success / bullish
+S_RED = "#ef4444"          # danger / bearish
+S_YELLOW = "#eab308"       # warning / neutral
+S_BLUE = "#3b82f6"         # info / accent
+S_ORANGE = "#f97316"       # speculative
+S_RADIUS = "8px"           # border radius
+S_FONT = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+
+
+def _card(content, border_color=None):
+    """Wrap content in a standard shadcn card."""
+    bc = border_color or S_BORDER
+    return (f'<div style="background:{S_CARD}; border:1px solid {bc};'
+            f' border-radius:{S_RADIUS}; padding:14px; font-family:{S_FONT};">'
+            f'{content}</div>')
+
+
+def _stat_card(label, value, sub="", color=None):
+    """Standard stat card — label, big value, subtitle."""
+    c = color or S_TEXT
+    return (
+        f'<div style="background:{S_CARD}; border:1px solid {S_BORDER};'
+        f' border-radius:{S_RADIUS}; padding:14px; text-align:center;">'
+        f'<div style="color:{S_DIM}; font-size:10px; font-weight:500;'
+        f' text-transform:uppercase; letter-spacing:1.5px; font-family:{S_FONT};">{label}</div>'
+        f'<div style="color:{c}; font-size:22px; font-weight:700; margin:6px 0;'
+        f' font-family:{S_FONT};">{value}</div>'
+        f'<div style="color:{S_DIM}; font-size:11px; font-family:{S_FONT};">{sub}</div>'
+        f'</div>'
+    )
+
 
 def get_magic_number(gex_table):
     """Find the 'magic number' — strike with highest positive 0-30 DTE GEX."""
@@ -604,7 +644,7 @@ def scanner_alert_banner_html(scan_result):
     <div style="background:{bg}; border:2px solid {border}; border-radius:10px;
         padding:14px 20px; margin:10px 0; text-align:center;
         animation:scanner-pulse 1.5s ease-in-out infinite;">
-        <div style="color:#fff; font-size:18px; font-weight:bold; letter-spacing:2px;">
+        <div style="color:#fafafa; font-size:18px; font-weight:bold; letter-spacing:2px;">
             {label}{lean_text}</div>
         <div style="color:rgba(255,255,255,0.7); font-size:12px; margin-top:6px;">{reasons}</div>
     </div>"""
@@ -647,20 +687,20 @@ def scanner_timing_html(timing_window):
         <div style="background:linear-gradient(135deg,#1a237e,#283593);
             border:2px solid #5c6bc0; border-radius:8px; padding:10px;
             text-align:center; margin:8px 0;">
-            <span style="color:#90caf9; font-size:11px; text-transform:uppercase;
+            <span style="color:#60a5fa; font-size:11px; text-transform:uppercase;
                 letter-spacing:2px;">ACTIVE WINDOW</span>
-            <div style="color:#fff; font-size:18px; font-weight:bold; margin:4px 0;">
+            <div style="color:#fafafa; font-size:18px; font-weight:bold; margin:4px 0;">
                 {timing_window['name']}</div>
-            <div style="color:#90caf9; font-size:12px;">
+            <div style="color:#60a5fa; font-size:12px;">
                 {timing_window['start']} - {timing_window['end']} ET (Now: {time_str})</div>
         </div>"""
     else:
         return f"""
-        <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:8px;
+        <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:8px;
             padding:10px; text-align:center; margin:8px 0;">
-            <span style="color:#555; font-size:11px; text-transform:uppercase;
+            <span style="color:#52525b; font-size:11px; text-transform:uppercase;
                 letter-spacing:2px;">NO ACTIVE WINDOW</span>
-            <div style="color:#888; font-size:13px; margin-top:4px;">
+            <div style="color:#71717a; font-size:13px; margin-top:4px;">
                 Next: 9:45 AM or 12:45 PM ET | Now: {time_str}</div>
         </div>"""
 
@@ -692,13 +732,13 @@ def scanner_summary_cards_html(scan_result):
 
     html = '<div style="display:flex; gap:10px; margin:12px 0;">'
     for label, value, sub, color in cards:
-        html += f"""<div style="flex:1; background:#16213e; border:1px solid #2a2a4a;
+        html += f"""<div style="flex:1; background:#0c0c0e; border:1px solid #1c1c1e;
             border-radius:10px; padding:12px; text-align:center;">
-            <div style="color:#666; font-size:10px; text-transform:uppercase;
+            <div style="color:#52525b; font-size:10px; text-transform:uppercase;
                 letter-spacing:2px;">{label}</div>
             <div style="color:{color}; font-size:22px; font-weight:bold; margin:4px 0;">
                 {value}</div>
-            <div style="color:#555; font-size:11px;">{sub}</div>
+            <div style="color:#52525b; font-size:11px;">{sub}</div>
         </div>"""
     html += '</div>'
     return html
@@ -712,12 +752,12 @@ def scanner_contracts_table_html(contracts, direction):
     hc = "#00c853" if direction == "CALLS" else "#ff1744"
 
     if not contracts:
-        return f"""<div style="background:#16213e; border:1px solid #2a2a4a;
+        return f"""<div style="background:#0c0c0e; border:1px solid #1c1c1e;
             border-radius:10px; padding:20px; text-align:center; margin:8px 0;">
             <div style="color:{hc}; font-size:13px; font-weight:bold;
                 text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">
                 {dir_label}</div>
-            <div style="color:#888; font-size:13px;">No 0DTE contracts in range</div>
+            <div style="color:#71717a; font-size:13px;">No 0DTE contracts in range</div>
         </div>"""
 
     # Use unique class name per direction to avoid CSS collisions
@@ -727,7 +767,7 @@ def scanner_contracts_table_html(contracts, direction):
     <style>
     .{cls} {{ border-collapse:collapse; width:100%;
         font-family:'Consolas','Courier New',monospace; font-size:12px; }}
-    .{cls} th {{ background:#1a1a2e; color:{hc}; padding:6px 6px;
+    .{cls} th {{ background:#18181b; color:{hc}; padding:6px 6px;
         text-align:center; border-bottom:2px solid {hc}44;
         font-size:10px; text-transform:uppercase; letter-spacing:1px; }}
     .{cls} td {{ padding:5px 6px; text-align:right;
@@ -758,11 +798,11 @@ def scanner_contracts_table_html(contracts, direction):
         vol_color = "#ffab00" if c["volume"] > c.get("avg_volume", 0) * 2 else "#aaa"
 
         html += f"""<tr style="background:{row_bg};">
-            <td style="color:#fff; font-weight:bold; text-align:center;">{c['strike']:,.0f}</td>
-            <td style="color:#fff;">${c['mark']:.2f}</td>
+            <td style="color:#fafafa; font-weight:bold; text-align:center;">{c['strike']:,.0f}</td>
+            <td style="color:#fafafa;">${c['mark']:.2f}</td>
             <td style="color:{gd_color};">{gd:.4f}</td>
             <td style="color:{vol_color};">{c['volume']:,}</td>
-            <td style="color:#aaa;">{c['iv']:.0%}</td>
+            <td style="color:#a1a1aa;">{c['iv']:.0%}</td>
             <td style="background:{sc_bg}; color:{sc_c}; font-weight:bold;
                 font-size:14px; text-align:center;">{score:.0f}</td>
         </tr>"""
@@ -796,9 +836,9 @@ def scanner_score_breakdown_html(contract):
             bar_c = "#ff1744"
 
         rows += f"""<div style="display:flex; align-items:center; gap:6px; margin:3px 0;">
-            <div style="color:#666; font-size:10px; width:36px; text-align:right;
+            <div style="color:#52525b; font-size:10px; width:36px; text-align:right;
                 text-transform:uppercase;">{label}</div>
-            <div style="flex:1; background:#1a1a2e; border-radius:3px; height:6px;
+            <div style="flex:1; background:#18181b; border-radius:3px; height:6px;
                 overflow:hidden;">
                 <div style="background:{bar_c}; width:{min(val,100)}%;
                     height:100%; border-radius:3px;"></div></div>
@@ -806,7 +846,7 @@ def scanner_score_breakdown_html(contract):
                 width:24px; text-align:right;">{val:.0f}</div>
         </div>"""
 
-    return f"""<div style="background:#16213e; border:1px solid #2a2a4a;
+    return f"""<div style="background:#0c0c0e; border:1px solid #1c1c1e;
         border-radius:8px; padding:8px 10px; margin:8px 0;">{rows}</div>"""
 
 
@@ -841,7 +881,7 @@ def brrrr_signal_html(signal):
     <div style="text-align:center; margin:16px 0;">
         <div style="display:inline-block; background:{bg}; border:3px solid {border};
             border-radius:20px; padding:24px 60px; box-shadow:{glow};">
-            <div style="color:#fff; font-size:48px; font-weight:900; letter-spacing:4px;
+            <div style="color:#fafafa; font-size:48px; font-weight:900; letter-spacing:4px;
                 text-shadow:0 2px 10px rgba(0,0,0,0.5);">
                 {icon} {label}</div>
             <div style="color:rgba(255,255,255,0.8); font-size:16px; margin-top:6px;">
@@ -878,36 +918,36 @@ def brrrr_confidence_meter_html(confidence):
     ticks = ""
     for pct in [0, 25, 45, 65, 100]:
         ticks += f"""<div style="position:absolute; left:{pct}%; top:-14px;
-            transform:translateX(-50%); color:#555; font-size:9px;">{pct}</div>"""
+            transform:translateX(-50%); color:#52525b; font-size:9px;">{pct}</div>"""
 
     # Color segments on the bar
     segments = f"""
     <div style="position:absolute; left:0; width:25%; height:100%;
-        background:#ff1744; border-radius:4px 0 0 4px; opacity:0.3;"></div>
+        background:#ef4444; border-radius:4px 0 0 4px; opacity:0.3;"></div>
     <div style="position:absolute; left:25%; width:20%; height:100%;
         background:#ff9800; opacity:0.3;"></div>
     <div style="position:absolute; left:45%; width:20%; height:100%;
-        background:#ffc107; opacity:0.3;"></div>
+        background:#eab308; opacity:0.3;"></div>
     <div style="position:absolute; left:65%; width:35%; height:100%;
-        background:#00c853; border-radius:0 4px 4px 0; opacity:0.3;"></div>"""
+        background:#22c55e; border-radius:0 4px 4px 0; opacity:0.3;"></div>"""
 
     fill_pct = min(confidence, 100)
 
     return f"""
-    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+    <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
         padding:20px 24px; margin:12px 0;">
         <div style="display:flex; justify-content:space-between; align-items:center;
             margin-bottom:12px;">
-            <div style="color:#888; font-size:12px; text-transform:uppercase;
+            <div style="color:#71717a; font-size:12px; text-transform:uppercase;
                 letter-spacing:2px;">Confidence</div>
             <div style="background:{tier_bg}; border:1px solid {tier_color};
                 border-radius:6px; padding:4px 12px;">
                 <span style="color:{tier_color}; font-size:14px; font-weight:bold;">
                     {tier}</span>
-                <span style="color:#888; font-size:11px; margin-left:6px;">{tier_desc}</span>
+                <span style="color:#71717a; font-size:11px; margin-left:6px;">{tier_desc}</span>
             </div>
         </div>
-        <div style="position:relative; background:#1a1a2e; border-radius:4px;
+        <div style="position:relative; background:#18181b; border-radius:4px;
             height:12px; margin-top:20px; overflow:visible;">
             {segments}
             <div style="position:absolute; left:0; width:{fill_pct}%; height:100%;
@@ -945,13 +985,13 @@ def brrrr_conviction_guide_html():
                 width:50px;">{pct_range}</div>
             <div style="color:#ccc; font-size:12px; font-weight:600;
                 width:120px;">{tier}</div>
-            <div style="color:#888; font-size:11px;">{desc}</div>
+            <div style="color:#71717a; font-size:11px;">{desc}</div>
         </div>"""
 
     return f"""
-    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+    <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
         padding:16px; margin:12px 0;">
-        <div style="color:#888; font-size:11px; text-transform:uppercase;
+        <div style="color:#71717a; font-size:11px; text-transform:uppercase;
             letter-spacing:2px; margin-bottom:8px;">Conviction Guide</div>
         {rows}
     </div>"""
@@ -964,9 +1004,9 @@ def brrrr_strikes_html(contracts, direction, spot_price):
 
     if not contracts:
         return f"""
-        <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+        <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
             padding:24px; text-align:center; margin:12px 0;">
-            <div style="color:#888; font-size:14px;">No 0DTE {dir_label.lower()}s in $4-$5.50 range</div>
+            <div style="color:#71717a; font-size:14px;">No 0DTE {dir_label.lower()}s in $4-$5.50 range</div>
         </div>"""
 
     top3 = contracts[:3]
@@ -1009,36 +1049,36 @@ def brrrr_strikes_html(contracts, direction, spot_price):
                 <div>
                     <div style="color:{hc}; font-size:10px; font-weight:bold;
                         text-transform:uppercase; letter-spacing:2px;">{label_text}</div>
-                    <div style="color:#fff; font-size:{strike_size}; font-weight:bold;
+                    <div style="color:#fafafa; font-size:{strike_size}; font-weight:bold;
                         margin:4px 0;">{strike:,.0f} {dir_label}</div>
-                    <div style="color:#888; font-size:12px;">{dist_label}</div>
+                    <div style="color:#71717a; font-size:12px;">{dist_label}</div>
                 </div>
                 <div style="text-align:right;">
-                    <div style="color:#fff; font-size:20px; font-weight:bold;">
+                    <div style="color:#fafafa; font-size:20px; font-weight:bold;">
                         ${mark:.2f}</div>
-                    <div style="color:#888; font-size:11px;">${cost:,.0f} per contract</div>
+                    <div style="color:#71717a; font-size:11px;">${cost:,.0f} per contract</div>
                 </div>
             </div>
             <div style="display:flex; gap:12px; margin-top:10px;
                 border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
                 <div style="flex:1; text-align:center;">
-                    <div style="color:#555; font-size:10px;">BID/ASK</div>
-                    <div style="color:#aaa; font-size:12px;">
+                    <div style="color:#52525b; font-size:10px;">BID/ASK</div>
+                    <div style="color:#a1a1aa; font-size:12px;">
                         ${c['bid']:.2f} / ${c['ask']:.2f}</div>
                 </div>
                 <div style="flex:1; text-align:center;">
-                    <div style="color:#555; font-size:10px;">3X TARGET</div>
-                    <div style="color:#ffc107; font-size:12px; font-weight:bold;">
+                    <div style="color:#52525b; font-size:10px;">3X TARGET</div>
+                    <div style="color:#eab308; font-size:12px; font-weight:bold;">
                         ${target_3x:.2f}</div>
                 </div>
                 <div style="flex:1; text-align:center;">
-                    <div style="color:#555; font-size:10px;">5X TARGET</div>
-                    <div style="color:#00e676; font-size:12px; font-weight:bold;">
+                    <div style="color:#52525b; font-size:10px;">5X TARGET</div>
+                    <div style="color:#4ade80; font-size:12px; font-weight:bold;">
                         ${target_5x:.2f}</div>
                 </div>
                 <div style="flex:1; text-align:center;">
-                    <div style="color:#555; font-size:10px;">VOL</div>
-                    <div style="color:#aaa; font-size:12px;">{c['volume']:,}</div>
+                    <div style="color:#52525b; font-size:10px;">VOL</div>
+                    <div style="color:#a1a1aa; font-size:12px;">{c['volume']:,}</div>
                 </div>
             </div>
         </div>"""
@@ -1070,8 +1110,8 @@ def brrrr_signal_components_html(signal):
         bar_width = abs(norm) * 50  # max 50% of bar width (centered)
 
         rows += f"""<div style="display:flex; align-items:center; gap:8px; margin:6px 0;">
-            <div style="color:#888; font-size:11px; width:110px; text-align:right;">{label}</div>
-            <div style="flex:1; height:8px; background:#1a1a2e; border-radius:4px;
+            <div style="color:#71717a; font-size:11px; width:110px; text-align:right;">{label}</div>
+            <div style="flex:1; height:8px; background:#18181b; border-radius:4px;
                 position:relative; overflow:hidden;">
                 <div style="position:absolute; left:50%; top:0; width:1px; height:100%;
                     background:#333;"></div>"""
@@ -1086,17 +1126,17 @@ def brrrr_signal_components_html(signal):
         rows += f"""</div>
             <div style="color:{bar_c}; font-size:11px; font-weight:bold;
                 width:40px; text-align:right;">{norm:+.2f}</div>
-            <div style="color:#555; font-size:10px; width:30px;">{weight_pct:.0f}%</div>
+            <div style="color:#52525b; font-size:10px; width:30px;">{weight_pct:.0f}%</div>
         </div>"""
 
     return f"""
-    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+    <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
         padding:14px 16px; margin:12px 0;">
-        <div style="color:#888; font-size:11px; text-transform:uppercase;
+        <div style="color:#71717a; font-size:11px; text-transform:uppercase;
             letter-spacing:2px; margin-bottom:8px;">Signal Breakdown</div>
         <div style="display:flex; justify-content:center; gap:24px; margin-bottom:6px;">
-            <span style="color:#ff1744; font-size:10px;">&#9668; PUTS</span>
-            <span style="color:#00c853; font-size:10px;">CALLS &#9658;</span>
+            <span style="color:#ef4444; font-size:10px;">&#9668; PUTS</span>
+            <span style="color:#22c55e; font-size:10px;">CALLS &#9658;</span>
         </div>
         {rows}
     </div>"""
@@ -1133,7 +1173,7 @@ def factor2_signal_html(signal_v2):
     <div style="text-align:center; margin:16px 0;">
         <div style="display:inline-block; background:{bg}; border:3px solid {border};
             border-radius:20px; padding:24px 60px; box-shadow:{glow};">
-            <div style="color:#fff; font-size:48px; font-weight:900; letter-spacing:4px;
+            <div style="color:#fafafa; font-size:48px; font-weight:900; letter-spacing:4px;
                 text-shadow:0 2px 10px rgba(0,0,0,0.5);">
                 {icon} {label}</div>
             <div style="color:rgba(255,255,255,0.8); font-size:16px; margin-top:6px;">
@@ -1164,14 +1204,14 @@ def factor2_confidence_html(confidence):
     fill = min(confidence, 50) * 2  # Scale 0-50% to 0-100% bar width
 
     return f"""
-    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+    <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
         padding:20px; margin:12px 0;">
         <div style="display:flex; justify-content:space-between; align-items:center;
             margin-bottom:12px;">
             <div>
                 <span style="color:{tier_color}; font-size:32px; font-weight:bold;">
                     {confidence:.0f}%</span>
-                <span style="color:#888; font-size:14px; margin-left:8px;">confidence</span>
+                <span style="color:#71717a; font-size:14px; margin-left:8px;">confidence</span>
             </div>
             <div style="background:rgba(0,0,0,0.3); border:1px solid {tier_color};
                 border-radius:6px; padding:4px 14px;">
@@ -1179,16 +1219,16 @@ def factor2_confidence_html(confidence):
                     {tier}</span>
             </div>
         </div>
-        <div style="background:#1a1a2e; border-radius:4px; height:10px; overflow:hidden;">
+        <div style="background:#18181b; border-radius:4px; height:10px; overflow:hidden;">
             <div style="background:{tier_color}; width:{fill}%; height:100%;
                 border-radius:4px; transition:width 0.3s;"></div>
         </div>
-        <div style="color:#888; font-size:11px; margin-top:6px;">{tier_desc}</div>
+        <div style="color:#71717a; font-size:11px; margin-top:6px;">{tier_desc}</div>
         <div style="display:flex; justify-content:space-between; margin-top:4px;">
-            <span style="color:#ff1744; font-size:9px;">0% SKIP</span>
+            <span style="color:#ef4444; font-size:9px;">0% SKIP</span>
             <span style="color:#ff9800; font-size:9px;">10% SPEC</span>
-            <span style="color:#ffc107; font-size:9px;">25% STD</span>
-            <span style="color:#00c853; font-size:9px;">40%+ FULL</span>
+            <span style="color:#eab308; font-size:9px;">25% STD</span>
+            <span style="color:#22c55e; font-size:9px;">40%+ FULL</span>
         </div>
     </div>"""
 
@@ -1218,9 +1258,9 @@ def factor2_breakdown_html(signal_v2):
             bar_pos = f"right:50%; width:{bar_width}%; border-radius:4px 0 0 4px;"
 
         rows += f"""<div style="display:flex; align-items:center; gap:8px; margin:8px 0;">
-            <div style="color:#888; font-size:12px; width:120px; text-align:right;
+            <div style="color:#71717a; font-size:12px; width:120px; text-align:right;
                 font-weight:500;">{label}</div>
-            <div style="flex:1; height:10px; background:#1a1a2e; border-radius:4px;
+            <div style="flex:1; height:10px; background:#18181b; border-radius:4px;
                 position:relative;">
                 <div style="position:absolute; left:50%; top:0; width:1px; height:100%;
                     background:#333;"></div>
@@ -1229,17 +1269,17 @@ def factor2_breakdown_html(signal_v2):
             </div>
             <div style="color:{bar_c}; font-size:12px; font-weight:bold;
                 width:44px; text-align:right;">{norm:+.2f}</div>
-            <div style="color:#555; font-size:10px; width:30px;">{weight_pct:.0f}%</div>
+            <div style="color:#52525b; font-size:10px; width:30px;">{weight_pct:.0f}%</div>
         </div>"""
 
     return f"""
-    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+    <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
         padding:16px 18px; margin:12px 0;">
-        <div style="color:#888; font-size:11px; text-transform:uppercase;
+        <div style="color:#71717a; font-size:11px; text-transform:uppercase;
             letter-spacing:2px; margin-bottom:6px;">Factor 2 Breakdown</div>
         <div style="display:flex; justify-content:center; gap:24px; margin-bottom:8px;">
-            <span style="color:#ff1744; font-size:10px;">&#9668; BEARISH</span>
-            <span style="color:#00c853; font-size:10px;">BULLISH &#9658;</span>
+            <span style="color:#ef4444; font-size:10px;">&#9668; BEARISH</span>
+            <span style="color:#22c55e; font-size:10px;">BULLISH &#9658;</span>
         </div>
         {rows}
     </div>"""
@@ -1265,15 +1305,15 @@ def factor2_flip_badge_html(flip_level, spot_price):
         icon = "&#9660;"
 
     return f"""
-    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+    <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
         padding:14px; margin:12px 0; text-align:center;">
-        <div style="color:#888; font-size:10px; text-transform:uppercase;
+        <div style="color:#71717a; font-size:10px; text-transform:uppercase;
             letter-spacing:2px;">GEX Flip Level</div>
-        <div style="color:#fff; font-size:24px; font-weight:bold; margin:4px 0;">
+        <div style="color:#fafafa; font-size:24px; font-weight:bold; margin:4px 0;">
             {flip_level:,.1f}</div>
         <div style="color:{color}; font-size:13px; font-weight:bold;">
             {icon} {regime_label} ({distance:+.1f} pts)</div>
-        <div style="color:#888; font-size:11px; margin-top:4px;">{regime_desc}</div>
+        <div style="color:#71717a; font-size:11px; margin-top:4px;">{regime_desc}</div>
     </div>"""
 
 
@@ -1283,10 +1323,10 @@ def zero_gamma_header_html(flip_level, spot_price):
     """Big 0-gamma display — the centerpiece."""
     if flip_level is None:
         return """
-        <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:16px;
+        <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:16px;
             padding:40px; text-align:center; margin:16px 0;">
-            <div style="color:#888; font-size:18px;">No GEX crossover detected</div>
-            <div style="color:#555; font-size:13px; margin-top:8px;">
+            <div style="color:#71717a; font-size:18px;">No GEX crossover detected</div>
+            <div style="color:#52525b; font-size:13px; margin-top:8px;">
                 All strikes have same-sign GEX</div>
         </div>"""
 
@@ -1313,29 +1353,29 @@ def zero_gamma_header_html(flip_level, spot_price):
             <div style="color:{zone_color}; font-size:14px; font-weight:bold;
                 text-transform:uppercase; letter-spacing:3px;">{zone_label}</div>
             <div style="margin:16px 0;">
-                <span style="color:#888; font-size:14px;">0 Gamma Level</span>
-                <div style="color:#fff; font-size:42px; font-weight:900;
+                <span style="color:#71717a; font-size:14px;">0 Gamma Level</span>
+                <div style="color:#fafafa; font-size:42px; font-weight:900;
                     text-shadow:0 0 20px {zone_color}44;">{flip_level:,.1f}</div>
             </div>
             <div style="display:flex; justify-content:center; gap:30px; margin-top:8px;">
                 <div>
-                    <div style="color:#888; font-size:10px; text-transform:uppercase;">SPX Now</div>
-                    <div style="color:#fff; font-size:18px; font-weight:bold;">{spot_price:,.2f}</div>
+                    <div style="color:#71717a; font-size:10px; text-transform:uppercase;">SPX Now</div>
+                    <div style="color:#fafafa; font-size:18px; font-weight:bold;">{spot_price:,.2f}</div>
                 </div>
                 <div>
-                    <div style="color:#888; font-size:10px; text-transform:uppercase;">Distance</div>
+                    <div style="color:#71717a; font-size:10px; text-transform:uppercase;">Distance</div>
                     <div style="color:{zone_color}; font-size:18px; font-weight:bold;">
                         {distance:+.1f} pts</div>
                 </div>
                 <div>
-                    <div style="color:#888; font-size:10px; text-transform:uppercase;">% Away</div>
+                    <div style="color:#71717a; font-size:10px; text-transform:uppercase;">% Away</div>
                     <div style="color:{zone_color}; font-size:18px; font-weight:bold;">
                         {pct_dist:.2f}%</div>
                 </div>
             </div>
         </div>
     </div>
-    <div style="text-align:center; color:#888; font-size:12px; margin-top:4px;">
+    <div style="text-align:center; color:#71717a; font-size:12px; margin-top:4px;">
         {zone_desc}</div>"""
 
 
@@ -1361,13 +1401,13 @@ def zero_gamma_stats_html(regime_info, spot_price):
 
     html = '<div style="display:flex; gap:10px; margin:16px 0;">'
     for label, value, sub, color in cards:
-        html += f"""<div style="flex:1; background:#16213e; border:1px solid #2a2a4a;
+        html += f"""<div style="flex:1; background:#0c0c0e; border:1px solid #1c1c1e;
             border-radius:10px; padding:14px; text-align:center;">
-            <div style="color:#666; font-size:10px; text-transform:uppercase;
+            <div style="color:#52525b; font-size:10px; text-transform:uppercase;
                 letter-spacing:2px;">{label}</div>
             <div style="color:{color}; font-size:22px; font-weight:bold; margin:6px 0;">
                 {value}</div>
-            <div style="color:#555; font-size:11px;">{sub}</div>
+            <div style="color:#52525b; font-size:11px;">{sub}</div>
         </div>"""
     html += '</div>'
     return html
@@ -1376,25 +1416,25 @@ def zero_gamma_stats_html(regime_info, spot_price):
 def zero_gamma_explanation_html():
     """Static explanation of what 0 gamma means."""
     return """
-    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+    <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
         padding:16px; margin:12px 0;">
-        <div style="color:#888; font-size:11px; text-transform:uppercase;
+        <div style="color:#71717a; font-size:11px; text-transform:uppercase;
             letter-spacing:2px; margin-bottom:10px;">How to Use This</div>
         <div style="display:flex; gap:16px;">
             <div style="flex:1; border-right:1px solid #2a2a4a; padding-right:16px;">
-                <div style="color:#00c853; font-size:13px; font-weight:bold;
+                <div style="color:#22c55e; font-size:13px; font-weight:bold;
                     margin-bottom:6px;">&#9650; SPX Above 0-Gamma</div>
-                <div style="color:#aaa; font-size:11px; line-height:1.5;">
+                <div style="color:#a1a1aa; font-size:11px; line-height:1.5;">
                     Dealers are long gamma. They buy when price drops, sell when it rises.
-                    This <b style="color:#fff;">dampens</b> moves. Expect range-bound,
+                    This <b style="color:#fafafa;">dampens</b> moves. Expect range-bound,
                     mean-reverting action. Fade moves, sell premium.</div>
             </div>
             <div style="flex:1; padding-left:16px;">
-                <div style="color:#ff1744; font-size:13px; font-weight:bold;
+                <div style="color:#ef4444; font-size:13px; font-weight:bold;
                     margin-bottom:6px;">&#9660; SPX Below 0-Gamma</div>
-                <div style="color:#aaa; font-size:11px; line-height:1.5;">
+                <div style="color:#a1a1aa; font-size:11px; line-height:1.5;">
                     Dealers are short gamma. They sell when price drops, buy when it rises.
-                    This <b style="color:#fff;">amplifies</b> moves. Expect trending,
+                    This <b style="color:#fafafa;">amplifies</b> moves. Expect trending,
                     explosive action. Ride momentum, buy 0DTE.</div>
             </div>
         </div>
@@ -1406,17 +1446,16 @@ def zero_gamma_explanation_html():
 def dte0_gex_header_html(flip_level, spot_price, info):
     """Big 0DTE header — GEX Magnet as the hero number, flip level secondary."""
     if not info or info.get("total_gex", 0) == 0:
-        return """
-        <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:16px;
-            padding:40px; text-align:center; margin:16px 0;">
-            <div style="color:#888; font-size:18px;">No 0DTE contracts found</div>
-            <div style="color:#555; font-size:13px; margin-top:8px;">
-                Market may be closed or no same-day expiry available</div>
-        </div>"""
+        return (f'<div style="background:{S_CARD}; border:1px solid {S_BORDER};'
+                f' border-radius:12px; padding:40px; text-align:center; margin:16px 0;'
+                f' font-family:{S_FONT};">'
+                f'<div style="color:{S_MUTED}; font-size:18px;">No 0DTE contracts found</div>'
+                f'<div style="color:{S_DIM}; font-size:13px; margin-top:8px;">'
+                f'Market may be closed or no same-day expiry available</div></div>')
 
     magnet = info.get("max_gex_strike")
     regime = info.get("regime", "UNKNOWN")
-    zone_color = "#00c853" if regime == "POSITIVE" else "#ff1744"
+    zone_color = S_GREEN if regime == "POSITIVE" else S_RED
 
     if magnet:
         mag_dist = magnet - spot_price
@@ -1427,63 +1466,68 @@ def dte0_gex_header_html(flip_level, spot_price, info):
         mag_pct = 0
         mag_dir = ""
 
-    # Flip level info (secondary) — NO leading indentation to avoid markdown code blocks
+    # Flip level info (secondary)
     if flip_level:
         flip_dist = spot_price - flip_level
         above_flip = flip_dist > 0
-        flip_color = "#00c853" if above_flip else "#ff1744"
+        flip_color = S_GREEN if above_flip else S_RED
         flip_label = "ABOVE FLIP" if above_flip else "BELOW FLIP"
         flip_desc = "Dealers dampening" if above_flip else "Dealers amplifying"
 
         flip_html = (
-            f'<div style="display:flex; justify-content:center; gap:24px; margin-top:14px;'
-            f' padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">'
+            f'<div style="display:flex; justify-content:center; gap:24px; margin-top:16px;'
+            f' padding-top:16px; border-top:1px solid {S_BORDER};">'
             f'<div style="text-align:center;">'
-            f'<div style="color:#888; font-size:10px; text-transform:uppercase;">0DTE Flip</div>'
-            f'<div style="color:#ffc107; font-size:20px; font-weight:bold;">{flip_level:,.1f}</div>'
+            f'<div style="color:{S_DIM}; font-size:10px; font-weight:500; text-transform:uppercase;'
+            f' letter-spacing:1px;">0DTE Flip</div>'
+            f'<div style="color:{S_YELLOW}; font-size:20px; font-weight:700;">{flip_level:,.1f}</div>'
             f'</div>'
             f'<div style="text-align:center;">'
-            f'<div style="color:#888; font-size:10px; text-transform:uppercase;">Regime</div>'
-            f'<div style="color:{flip_color}; font-size:14px; font-weight:bold; margin-top:4px;">{flip_label}</div>'
-            f'<div style="color:#888; font-size:10px;">{flip_desc}</div>'
+            f'<div style="color:{S_DIM}; font-size:10px; font-weight:500; text-transform:uppercase;'
+            f' letter-spacing:1px;">Regime</div>'
+            f'<div style="color:{flip_color}; font-size:14px; font-weight:600; margin-top:4px;">{flip_label}</div>'
+            f'<div style="color:{S_DIM}; font-size:10px;">{flip_desc}</div>'
             f'</div>'
             f'<div style="text-align:center;">'
-            f'<div style="color:#888; font-size:10px; text-transform:uppercase;">SPX to Flip</div>'
-            f'<div style="color:{flip_color}; font-size:20px; font-weight:bold;">{flip_dist:+.1f} pts</div>'
+            f'<div style="color:{S_DIM}; font-size:10px; font-weight:500; text-transform:uppercase;'
+            f' letter-spacing:1px;">SPX to Flip</div>'
+            f'<div style="color:{flip_color}; font-size:20px; font-weight:700;">{flip_dist:+.1f} pts</div>'
             f'</div></div>'
         )
     else:
         flip_html = (
-            f'<div style="text-align:center; margin-top:12px; padding-top:12px;'
-            f' border-top:1px solid rgba(255,255,255,0.08);">'
-            f'<span style="color:{zone_color}; font-size:12px; font-weight:bold;">'
+            f'<div style="text-align:center; margin-top:14px; padding-top:14px;'
+            f' border-top:1px solid {S_BORDER};">'
+            f'<span style="color:{zone_color}; font-size:12px; font-weight:600;">'
             f'All {regime} gamma — no flip level in 0DTE chain</span></div>'
         )
 
     return (
-        '<div style="text-align:center; margin:16px 0;">'
-        '<div style="display:inline-block; background:#16213e; border:3px solid #90caf9;'
-        ' border-radius:20px; padding:28px 50px;'
-        ' box-shadow:0 0 50px rgba(144,202,249,0.2);">'
-        '<div style="color:#90caf9; font-size:14px; font-weight:bold;'
-        ' text-transform:uppercase; letter-spacing:3px;">0DTE GEX Magnet</div>'
-        f'<div style="color:#fff; font-size:52px; font-weight:900; margin:8px 0;'
-        f' text-shadow:0 0 30px rgba(144,202,249,0.3);">{magnet:,.0f}</div>'
-        '<div style="display:flex; justify-content:center; gap:30px; margin-top:8px;">'
-        '<div>'
-        '<div style="color:#888; font-size:10px; text-transform:uppercase;">SPX Now</div>'
-        f'<div style="color:#fff; font-size:18px; font-weight:bold;">{spot_price:,.2f}</div>'
-        '</div><div>'
-        '<div style="color:#888; font-size:10px; text-transform:uppercase;">Distance</div>'
-        f'<div style="color:#90caf9; font-size:18px; font-weight:bold;">{mag_dist:+.0f} pts {mag_dir}</div>'
-        '</div><div>'
-        '<div style="color:#888; font-size:10px; text-transform:uppercase;">% Away</div>'
-        f'<div style="color:#90caf9; font-size:18px; font-weight:bold;">{mag_pct:.2f}%</div>'
-        '</div></div>'
+        f'<div style="text-align:center; margin:16px 0; font-family:{S_FONT};">'
+        f'<div style="display:inline-block; background:{S_CARD}; border:1px solid {S_BLUE}33;'
+        f' border-radius:12px; padding:28px 50px;">'
+        f'<div style="color:{S_BLUE}; font-size:12px; font-weight:600;'
+        f' text-transform:uppercase; letter-spacing:2px;">0DTE GEX Magnet</div>'
+        f'<div style="color:{S_TEXT}; font-size:52px; font-weight:900; margin:8px 0;'
+        f' letter-spacing:-2px;">{magnet:,.0f}</div>'
+        f'<div style="display:flex; justify-content:center; gap:30px; margin-top:8px;">'
+        f'<div>'
+        f'<div style="color:{S_DIM}; font-size:10px; font-weight:500; text-transform:uppercase;'
+        f' letter-spacing:1px;">SPX Now</div>'
+        f'<div style="color:{S_TEXT}; font-size:18px; font-weight:700;">{spot_price:,.2f}</div>'
+        f'</div><div>'
+        f'<div style="color:{S_DIM}; font-size:10px; font-weight:500; text-transform:uppercase;'
+        f' letter-spacing:1px;">Distance</div>'
+        f'<div style="color:{S_BLUE}; font-size:18px; font-weight:700;">{mag_dist:+.0f} pts {mag_dir}</div>'
+        f'</div><div>'
+        f'<div style="color:{S_DIM}; font-size:10px; font-weight:500; text-transform:uppercase;'
+        f' letter-spacing:1px;">% Away</div>'
+        f'<div style="color:{S_BLUE}; font-size:18px; font-weight:700;">{mag_pct:.2f}%</div>'
+        f'</div></div>'
         f'{flip_html}'
-        '</div></div>'
-        '<div style="text-align:center; color:#888; font-size:12px; margin-top:4px;">'
-        'Price is pulled toward the magnet strike — highest 0DTE dealer gamma exposure</div>'
+        f'</div></div>'
+        f'<div style="text-align:center; color:{S_DIM}; font-size:12px; margin-top:6px;">'
+        f'Price is pulled toward the magnet — highest 0DTE dealer gamma exposure</div>'
     )
 
 
@@ -1496,20 +1540,10 @@ def dte0_gex_stats_html(info, spot_price):
 
     total = info.get("total_gex", 0)
     regime = info.get("regime", "UNKNOWN")
-    regime_color = "#00c853" if regime == "POSITIVE" else "#ff1744"
+    regime_color = S_GREEN if regime == "POSITIVE" else S_RED
     call_wall = info.get("call_wall")
     put_wall = info.get("put_wall")
     max_strike = info.get("max_gex_strike")
-
-    row1 = [
-        ("0DTE Net GEX", format_gex_value(total), regime, regime_color),
-        ("GEX Magnet", f"{max_strike:,.0f}" if max_strike else "--",
-         f"{max_strike - spot_price:+.0f} pts" if max_strike else "", "#90caf9"),
-        ("Call Wall", f"{call_wall:,.0f}" if call_wall else "--",
-         f"{call_wall - spot_price:+.0f} pts (resistance)" if call_wall else "", "#00c853"),
-        ("Put Wall", f"{put_wall:,.0f}" if put_wall else "--",
-         f"{put_wall - spot_price:+.0f} pts (support)" if put_wall else "", "#ff1744"),
-    ]
 
     total_call_oi = info.get("total_call_oi", 0)
     total_put_oi = info.get("total_put_oi", 0)
@@ -1518,29 +1552,33 @@ def dte0_gex_stats_html(info, spot_price):
     pc_oi = total_put_oi / total_call_oi if total_call_oi > 0 else 0
     pc_vol = total_put_vol / total_call_vol if total_call_vol > 0 else 0
 
+    row1 = [
+        ("0DTE Net GEX", format_gex_value(total), regime, regime_color),
+        ("GEX Magnet", f"{max_strike:,.0f}" if max_strike else "--",
+         f"{max_strike - spot_price:+.0f} pts" if max_strike else "", S_BLUE),
+        ("Call Wall", f"{call_wall:,.0f}" if call_wall else "--",
+         f"{call_wall - spot_price:+.0f} pts" if call_wall else "", S_GREEN),
+        ("Put Wall", f"{put_wall:,.0f}" if put_wall else "--",
+         f"{put_wall - spot_price:+.0f} pts" if put_wall else "", S_RED),
+    ]
+
     row2 = [
-        ("0DTE Call OI", f"{total_call_oi:,}", f"Vol: {total_call_vol:,}", "#00c853"),
-        ("0DTE Put OI", f"{total_put_oi:,}", f"Vol: {total_put_vol:,}", "#ff1744"),
+        ("0DTE Call OI", f"{total_call_oi:,}", f"Vol: {total_call_vol:,}", S_GREEN),
+        ("0DTE Put OI", f"{total_put_oi:,}", f"Vol: {total_put_vol:,}", S_RED),
         ("P/C OI Ratio", f"{pc_oi:.2f}",
          "Bearish" if pc_oi > 1.2 else "Bullish" if pc_oi < 0.8 else "Neutral",
-         "#ff1744" if pc_oi > 1.2 else "#00c853" if pc_oi < 0.8 else "#888"),
+         S_RED if pc_oi > 1.2 else S_GREEN if pc_oi < 0.8 else S_MUTED),
         ("P/C Vol Ratio", f"{pc_vol:.2f}",
          "Bearish" if pc_vol > 1.2 else "Bullish" if pc_vol < 0.8 else "Neutral",
-         "#ff1744" if pc_vol > 1.2 else "#00c853" if pc_vol < 0.8 else "#888"),
+         S_RED if pc_vol > 1.2 else S_GREEN if pc_vol < 0.8 else S_MUTED),
     ]
 
     html = ""
     for row in [row1, row2]:
-        html += '<div style="display:flex; gap:10px; margin:8px 0;">'
+        html += f'<div style="display:flex; gap:8px; margin:8px 0;">'
         for label, value, sub, color in row:
-            html += f"""<div style="flex:1; background:#16213e; border:1px solid #2a2a4a;
-                border-radius:10px; padding:12px; text-align:center;">
-                <div style="color:#666; font-size:10px; text-transform:uppercase;
-                    letter-spacing:1px;">{label}</div>
-                <div style="color:{color}; font-size:20px; font-weight:bold; margin:4px 0;">
-                    {value}</div>
-                <div style="color:#555; font-size:11px;">{sub}</div>
-            </div>"""
+            html += (f'<div style="flex:1;">'
+                     f'{_stat_card(label, value, sub, color)}</div>')
         html += '</div>'
     return html
 
@@ -1569,19 +1607,19 @@ def dte0_gex_vs_all_html(flip_0dte, flip_all, spot_price):
         note_color = "#888"
 
     return f"""
-    <div style="background:#16213e; border:1px solid #2a2a4a; border-radius:12px;
+    <div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;
         padding:14px 18px; margin:12px 0;">
-        <div style="color:#888; font-size:11px; text-transform:uppercase;
+        <div style="color:#71717a; font-size:11px; text-transform:uppercase;
             letter-spacing:2px; margin-bottom:10px;">0DTE vs All-Expiry Flip</div>
         <div style="display:flex; gap:20px; justify-content:center; align-items:center;">
             <div style="text-align:center;">
-                <div style="color:#ffc107; font-size:10px; text-transform:uppercase;">0DTE Flip</div>
-                <div style="color:#ffc107; font-size:24px; font-weight:bold;">{dte0_str}</div>
+                <div style="color:#eab308; font-size:10px; text-transform:uppercase;">0DTE Flip</div>
+                <div style="color:#eab308; font-size:24px; font-weight:bold;">{dte0_str}</div>
             </div>
-            <div style="color:#555; font-size:20px;">vs</div>
+            <div style="color:#52525b; font-size:20px;">vs</div>
             <div style="text-align:center;">
-                <div style="color:#90caf9; font-size:10px; text-transform:uppercase;">All-Expiry Flip</div>
-                <div style="color:#90caf9; font-size:24px; font-weight:bold;">{all_str}</div>
+                <div style="color:#60a5fa; font-size:10px; text-transform:uppercase;">All-Expiry Flip</div>
+                <div style="color:#60a5fa; font-size:24px; font-weight:bold;">{all_str}</div>
             </div>
         </div>
         <div style="text-align:center; color:{note_color}; font-size:12px;
