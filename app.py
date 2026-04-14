@@ -223,8 +223,8 @@ if len(st.session_state.premium_history) > 500:
     st.session_state.premium_history = st.session_state.premium_history[-500:]
 
 # === TABBED LAYOUT ===
-tab_gex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma, tab_0dte_gex = st.tabs([
-    "GEX Dashboard", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma", "0DTE GEX"
+tab_gex, tab_0dte_gex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
+    "GEX Dashboard", "0DTE GEX", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
 ])
 
 # --- GEX Dashboard Tab (original content) ---
