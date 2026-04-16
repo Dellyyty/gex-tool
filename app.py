@@ -96,7 +96,7 @@ from ui_components import (
     zero_gamma_header_html, zero_gamma_stats_html,
     zero_gamma_explanation_html,
     dte0_gex_header_html, dte0_gex_stats_html, dte0_gex_vs_all_html,
-    top_gex_header_html, top_gex_strikes_html,
+    top_gex_header_html, top_gex_strike_card_html,
 )
 from config import (
     DATA_SOURCE, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM,
@@ -112,6 +112,8 @@ if "price_history" not in st.session_state:
     st.session_state.price_history = []
 if "last_reset_date" not in st.session_state:
     st.session_state.last_reset_date = None
+if "prev_gex_pcts" not in st.session_state:
+    st.session_state.prev_gex_pcts = {}
 
 # Reset history on new trading day
 eastern = pytz.timezone("US/Eastern")
@@ -123,6 +125,7 @@ if st.session_state.last_reset_date != today_str:
         st.session_state.signal_history = []
         st.session_state.premium_history = []
         st.session_state.price_history = []
+        st.session_state.prev_gex_pcts = {}
         st.session_state.last_reset_date = today_str
 
 # --- Sidebar (matching reference layout) ---
@@ -310,8 +313,8 @@ with tab_top_gex:
         gex_series = info_0dte["gex_by_strike"]
         total_abs_gex = gex_series.abs().sum()
 
-        # Top 10 by absolute GEX
-        top_strikes_abs = gex_series.abs().nlargest(10)
+        # Top 5 by absolute GEX
+        top_strikes_abs = gex_series.abs().nlargest(5)
 
         # Get 0DTE filtered data for per-strike volume/OI
         _zero_dte = options_df[options_df["dte"] <= 0].copy()
@@ -321,10 +324,13 @@ with tab_top_gex:
         call_wall_strike = info_0dte.get("call_wall")
         put_wall_strike = info_0dte.get("put_wall")
 
+        # Build current pcts for change tracking
+        current_pcts = {}
         strikes_data = []
         for rank_idx, (strike, abs_gex) in enumerate(top_strikes_abs.items(), start=1):
             net_gex = gex_series.loc[strike]
             gex_pct = (abs_gex / total_abs_gex * 100) if total_abs_gex > 0 else 0
+            current_pcts[strike] = gex_pct
 
             # Per-strike volume and OI
             strike_rows = _zero_dte[_zero_dte["strike"] == strike]
@@ -337,6 +343,13 @@ with tab_top_gex:
             is_atm = abs(distance) <= 5
             is_call_wall = (call_wall_strike is not None and strike == call_wall_strike)
             is_put_wall = (put_wall_strike is not None and strike == put_wall_strike)
+
+            # % change from last refresh
+            prev_pct = st.session_state.prev_gex_pcts.get(strike)
+            if prev_pct is not None and prev_pct > 0:
+                pct_change = ((gex_pct - prev_pct) / prev_pct) * 100
+            else:
+                pct_change = None
 
             strikes_data.append({
                 "rank": rank_idx,
@@ -351,7 +364,11 @@ with tab_top_gex:
                 "is_atm": is_atm,
                 "is_call_wall": is_call_wall,
                 "is_put_wall": is_put_wall,
+                "pct_change": pct_change,
             })
+
+        # Save current pcts for next refresh comparison
+        st.session_state.prev_gex_pcts = current_pcts
 
         # Header
         top1 = strikes_data[0] if strikes_data else None
@@ -366,8 +383,14 @@ with tab_top_gex:
             unsafe_allow_html=True,
         )
 
-        # Strike cards
-        st.markdown(top_gex_strikes_html(strikes_data, spot_price), unsafe_allow_html=True)
+        # Strike cards — render each separately to avoid HTML size limits
+        max_vol = max(
+            max((s.get("call_vol", 0) for s in strikes_data), default=1),
+            max((s.get("put_vol", 0) for s in strikes_data), default=1),
+            1,
+        )
+        for s in strikes_data:
+            st.markdown(top_gex_strike_card_html(s, max_vol), unsafe_allow_html=True)
     else:
         st.markdown(
             '<div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;'
