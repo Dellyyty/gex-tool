@@ -372,25 +372,27 @@ with tab_top_gex:
 
         # Header
         top1 = strikes_data[0] if strikes_data else None
-        st.markdown(
-            top_gex_header_html(
-                top1["strike"] if top1 else None,
-                top1["gex_pct"] if top1 else 0,
-                gex_series.sum(),
-                spot_price,
-                len(gex_series),
-            ),
-            unsafe_allow_html=True,
+        header_html = top_gex_header_html(
+            top1["strike"] if top1 else None,
+            top1["gex_pct"] if top1 else 0,
+            gex_series.sum(),
+            spot_price,
+            len(gex_series),
         )
+        st.components.v1.html(header_html, height=300, scrolling=False)
 
-        # Strike cards — render each separately to avoid HTML size limits
+        # Strike cards — use st.components.v1.html for reliable rendering
         max_vol = max(
             max((s.get("call_vol", 0) for s in strikes_data), default=1),
             max((s.get("put_vol", 0) for s in strikes_data), default=1),
             1,
         )
-        for s in strikes_data:
-            st.markdown(top_gex_strike_card_html(s, max_vol), unsafe_allow_html=True)
+        all_cards = "".join(top_gex_strike_card_html(s, max_vol) for s in strikes_data)
+        cards_html = (
+            f'<div style="font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;">'
+            f'{all_cards}</div>'
+        )
+        st.components.v1.html(cards_html, height=len(strikes_data) * 145, scrolling=False)
     else:
         st.markdown(
             '<div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;'

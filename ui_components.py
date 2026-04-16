@@ -1719,7 +1719,7 @@ def _format_gex_display(val):
 
 
 def top_gex_strike_card_html(s, max_vol):
-    """Render a single strike card. Called per-strike so Streamlit can render each separately."""
+    """Render a single strike card — kept flat for Streamlit HTML compatibility."""
     rank = s["rank"]
     strike = s["strike"]
     net_gex = s["net_gex"]
@@ -1730,102 +1730,86 @@ def top_gex_strike_card_html(s, max_vol):
     is_atm = s.get("is_atm", False)
     is_call_wall = s.get("is_call_wall", False)
     is_put_wall = s.get("is_put_wall", False)
-    pct_change = s.get("pct_change")  # None if no previous data
+    pct_change = s.get("pct_change")
 
-    # Colors
     gex_color = S_GREEN if net_gex >= 0 else S_RED
     bar_width = min(gex_pct, 100)
 
-    # Rank styling
     if rank == 1:
         rank_bg = S_YELLOW
         rank_text = "#000"
-        border_color = f"{S_YELLOW}66"
+        border_color = S_YELLOW
+        card_bg = f"linear-gradient(135deg, #16213e, {gex_color}15)"
     elif rank <= 3:
         rank_bg = S_DIM
         rank_text = S_TEXT
-        border_color = f"{S_DIM}44"
+        border_color = "#3f3f46"
+        card_bg = S_CARD
     else:
         rank_bg = S_BORDER
         rank_text = S_MUTED
         border_color = S_BORDER
+        card_bg = S_CARD
 
-    # Badges
     badges = ""
     if is_call_wall:
-        badges += (f'<span style="background:{S_GREEN}22; color:{S_GREEN};'
-                   f' font-size:9px; font-weight:700; padding:2px 6px;'
-                   f' border-radius:3px; margin-left:6px;">CALL WALL</span>')
+        badges += f' <span style="background:{S_GREEN}22; color:{S_GREEN}; font-size:9px; font-weight:700; padding:2px 6px; border-radius:3px;">CALL WALL</span>'
     if is_put_wall:
-        badges += (f'<span style="background:{S_RED}22; color:{S_RED};'
-                   f' font-size:9px; font-weight:700; padding:2px 6px;'
-                   f' border-radius:3px; margin-left:6px;">PUT WALL</span>')
+        badges += f' <span style="background:{S_RED}22; color:{S_RED}; font-size:9px; font-weight:700; padding:2px 6px; border-radius:3px;">PUT WALL</span>'
     if is_atm:
-        badges += (f'<span style="background:{S_BLUE}22; color:{S_BLUE};'
-                   f' font-size:9px; font-weight:700; padding:2px 6px;'
-                   f' border-radius:3px; margin-left:6px;">ATM</span>')
+        badges += f' <span style="background:{S_BLUE}22; color:{S_BLUE}; font-size:9px; font-weight:700; padding:2px 6px; border-radius:3px;">ATM</span>'
 
-    # Volume bar widths
+    gex_str = _format_gex_display(net_gex)
+
+    change_html = ""
+    if pct_change is not None and abs(pct_change) > 0.1:
+        ch_color = S_GREEN if pct_change > 0 else S_RED
+        arrow = "&#9650;" if pct_change > 0 else "&#9660;"
+        change_html = f' <span style="color:{ch_color}; font-size:10px; font-weight:600;">{arrow} {abs(pct_change):.1f}%</span>'
+
     call_bar_w = (call_vol / max_vol * 100) if max_vol > 0 else 0
     put_bar_w = (put_vol / max_vol * 100) if max_vol > 0 else 0
 
-    # GEX value
-    gex_str = _format_gex_display(net_gex)
-
-    # % change badge
-    change_html = ""
-    if pct_change is not None and pct_change != 0:
-        ch_color = S_GREEN if pct_change > 0 else S_RED
-        arrow = "&#9650;" if pct_change > 0 else "&#9660;"
-        change_html = (
-            f'<span style="color:{ch_color}; font-size:10px; font-weight:600;'
-            f' margin-left:8px;">{arrow} {abs(pct_change):.1f}%</span>'
-        )
-
-    return f"""<div style="background:{S_CARD}; border:1px solid {border_color};
-        border-radius:{S_RADIUS}; padding:12px 16px; display:flex; align-items:center;
-        gap:14px; font-family:{S_FONT};">
-        <div style="background:{rank_bg}; color:{rank_text}; width:32px; height:32px;
-            border-radius:6px; display:flex; align-items:center; justify-content:center;
-            font-size:14px; font-weight:800; flex-shrink:0;">#{rank}</div>
-        <div style="min-width:120px;">
-            <div style="display:flex; align-items:center;">
-                <span style="color:{S_TEXT}; font-size:20px; font-weight:800;">{strike:,.0f}</span>
-                {badges}
-            </div>
-            <div style="color:{S_DIM}; font-size:11px; margin-top:2px;">
-                {distance:+.0f} pts from spot</div>
-        </div>
-        <div style="flex:1; min-width:0;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                <span style="color:{gex_color}; font-size:13px; font-weight:700;">
-                    {gex_str}{change_html}</span>
-                <span style="color:{gex_color}; font-size:13px; font-weight:800;">
-                    {gex_pct:.1f}%</span>
-            </div>
-            <div style="background:{S_BORDER}; border-radius:3px; height:8px; overflow:hidden;">
-                <div style="background:{gex_color}; width:{bar_width}%; height:100%;
-                    border-radius:3px;"></div>
-            </div>
-        </div>
-        <div style="width:120px; flex-shrink:0;">
-            <div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;">
-                <span style="color:{S_GREEN}; font-size:9px; font-weight:600; width:12px;">C</span>
-                <div style="flex:1; background:{S_BORDER}; border-radius:2px; height:6px; overflow:hidden;">
-                    <div style="background:{S_GREEN}88; width:{call_bar_w:.0f}%; height:100%;
-                        border-radius:2px;"></div>
-                </div>
-                <span style="color:{S_DIM}; font-size:9px; width:36px; text-align:right;">
-                    {call_vol:,}</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:4px;">
-                <span style="color:{S_RED}; font-size:9px; font-weight:600; width:12px;">P</span>
-                <div style="flex:1; background:{S_BORDER}; border-radius:2px; height:6px; overflow:hidden;">
-                    <div style="background:{S_RED}88; width:{put_bar_w:.0f}%; height:100%;
-                        border-radius:2px;"></div>
-                </div>
-                <span style="color:{S_DIM}; font-size:9px; width:36px; text-align:right;">
-                    {put_vol:,}</span>
-            </div>
-        </div>
-    </div>"""
+    return (
+        f'<div style="background:{card_bg}; border:1px solid {border_color};'
+        f' border-radius:12px; padding:16px; margin:8px 0; font-family:{S_FONT};">'
+        f'<div style="display:flex; justify-content:space-between; align-items:center;">'
+        f'<div>'
+        f'<span style="display:inline-block; background:{rank_bg}; color:{rank_text};'
+        f' width:28px; height:28px; border-radius:6px; text-align:center; line-height:28px;'
+        f' font-size:13px; font-weight:800; margin-right:10px;">#{rank}</span>'
+        f'<span style="color:{S_TEXT}; font-size:22px; font-weight:800;">{strike:,.0f}</span>'
+        f'{badges}'
+        f'<div style="color:{S_DIM}; font-size:11px; margin-top:2px; margin-left:38px;">'
+        f'{distance:+.0f} pts from spot</div>'
+        f'</div>'
+        f'<div style="text-align:right;">'
+        f'<div style="color:{gex_color}; font-size:20px; font-weight:bold;">{gex_str}{change_html}</div>'
+        f'<div style="color:{gex_color}; font-size:14px; font-weight:800;">{gex_pct:.1f}% of GEX</div>'
+        f'</div>'
+        f'</div>'
+        f'<div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">'
+        f'<div style="background:{S_BORDER}; border-radius:4px; height:10px; overflow:hidden; margin-bottom:8px;">'
+        f'<div style="background:{gex_color}; width:{bar_width}%; height:100%; border-radius:4px;"></div>'
+        f'</div>'
+        f'<div style="display:flex; gap:16px;">'
+        f'<div style="flex:1; text-align:center;">'
+        f'<div style="color:{S_DIM}; font-size:10px;">CALL VOL</div>'
+        f'<div style="color:{S_GREEN}; font-size:13px; font-weight:bold;">{call_vol:,}</div>'
+        f'</div>'
+        f'<div style="flex:1; text-align:center;">'
+        f'<div style="color:{S_DIM}; font-size:10px;">PUT VOL</div>'
+        f'<div style="color:{S_RED}; font-size:13px; font-weight:bold;">{put_vol:,}</div>'
+        f'</div>'
+        f'<div style="flex:1; text-align:center;">'
+        f'<div style="color:{S_DIM}; font-size:10px;">CALL OI</div>'
+        f'<div style="color:{S_GREEN}; font-size:13px; font-weight:bold;">{s.get("call_oi", 0):,}</div>'
+        f'</div>'
+        f'<div style="flex:1; text-align:center;">'
+        f'<div style="color:{S_DIM}; font-size:10px;">PUT OI</div>'
+        f'<div style="color:{S_RED}; font-size:13px; font-weight:bold;">{s.get("put_oi", 0):,}</div>'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+    )
