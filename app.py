@@ -96,6 +96,7 @@ from ui_components import (
     zero_gamma_header_html, zero_gamma_stats_html,
     zero_gamma_explanation_html,
     dte0_gex_header_html, dte0_gex_stats_html, dte0_gex_vs_all_html,
+    top_gex_header_html, top_gex_strikes_html,
 )
 from config import (
     DATA_SOURCE, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM,
@@ -287,8 +288,8 @@ if len(st.session_state.premium_history) > 500:
     st.session_state.premium_history = st.session_state.premium_history[-500:]
 
 # === TABBED LAYOUT ===
-tab_gex, tab_0dte_gex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
-    "GEX Dashboard", "0DTE GEX", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
+tab_gex, tab_0dte_gex, tab_top_gex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
+    "GEX Dashboard", "0DTE GEX", "Top GEX", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
 ])
 
 # --- GEX Dashboard Tab (original content) ---
@@ -302,6 +303,80 @@ with tab_gex:
     with col_chart:
         fig = create_gex_bar_chart(gex_by_strike, spot_price, net_contracts=net_contracts)
         st.plotly_chart(fig, use_container_width=True)
+
+# --- Top GEX Tab ---
+with tab_top_gex:
+    if info_0dte and "gex_by_strike" in info_0dte and not info_0dte["gex_by_strike"].empty:
+        gex_series = info_0dte["gex_by_strike"]
+        total_abs_gex = gex_series.abs().sum()
+
+        # Top 10 by absolute GEX
+        top_strikes_abs = gex_series.abs().nlargest(10)
+
+        # Get 0DTE filtered data for per-strike volume/OI
+        _zero_dte = options_df[options_df["dte"] <= 0].copy()
+        if _zero_dte.empty:
+            _zero_dte = options_df[options_df["dte"] <= 1].copy()
+
+        call_wall_strike = info_0dte.get("call_wall")
+        put_wall_strike = info_0dte.get("put_wall")
+
+        strikes_data = []
+        for rank_idx, (strike, abs_gex) in enumerate(top_strikes_abs.items(), start=1):
+            net_gex = gex_series.loc[strike]
+            gex_pct = (abs_gex / total_abs_gex * 100) if total_abs_gex > 0 else 0
+
+            # Per-strike volume and OI
+            strike_rows = _zero_dte[_zero_dte["strike"] == strike]
+            call_vol = int(strike_rows["call_volume"].sum()) if not strike_rows.empty else 0
+            put_vol = int(strike_rows["put_volume"].sum()) if not strike_rows.empty else 0
+            call_oi = int(strike_rows["call_OI"].sum()) if not strike_rows.empty else 0
+            put_oi = int(strike_rows["put_OI"].sum()) if not strike_rows.empty else 0
+
+            distance = strike - spot_price
+            is_atm = abs(distance) <= 5
+            is_call_wall = (call_wall_strike is not None and strike == call_wall_strike)
+            is_put_wall = (put_wall_strike is not None and strike == put_wall_strike)
+
+            strikes_data.append({
+                "rank": rank_idx,
+                "strike": strike,
+                "net_gex": net_gex,
+                "gex_pct": gex_pct,
+                "call_vol": call_vol,
+                "put_vol": put_vol,
+                "call_oi": call_oi,
+                "put_oi": put_oi,
+                "distance": distance,
+                "is_atm": is_atm,
+                "is_call_wall": is_call_wall,
+                "is_put_wall": is_put_wall,
+            })
+
+        # Header
+        top1 = strikes_data[0] if strikes_data else None
+        st.markdown(
+            top_gex_header_html(
+                top1["strike"] if top1 else None,
+                top1["gex_pct"] if top1 else 0,
+                gex_series.sum(),
+                spot_price,
+                len(gex_series),
+            ),
+            unsafe_allow_html=True,
+        )
+
+        # Strike cards
+        st.markdown(top_gex_strikes_html(strikes_data, spot_price), unsafe_allow_html=True)
+    else:
+        st.markdown(
+            '<div style="background:#0c0c0e; border:1px solid #1c1c1e; border-radius:12px;'
+            ' padding:40px; text-align:center; margin:16px 0; font-family:Inter,sans-serif;">'
+            '<div style="color:#a1a1aa; font-size:18px;">No 0DTE GEX data available</div>'
+            '<div style="color:#52525b; font-size:13px; margin-top:8px;">'
+            'Market may be closed or no same-day expiry available</div></div>',
+            unsafe_allow_html=True,
+        )
 
 # --- Close Direction Tab ---
 with tab_signal:
