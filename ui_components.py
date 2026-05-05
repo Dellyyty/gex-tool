@@ -2366,3 +2366,213 @@ def convexity_card_html(c, rank):
         f'</div></div>'
         f'</div>'
     )
+
+
+def pre_breakout_card_html(c, rank):
+    """Pre-breakout card — Stealth / Coil Spring / Physics pillars."""
+    side_color = S_GREEN if c["side"] == "CALL" else S_RED
+    score = c["score"]
+
+    if score >= 7.0:
+        score_color = S_GREEN
+        score_label = "STEALTH ELITE"
+    elif score >= 5.5:
+        score_color = S_YELLOW
+        score_label = "ACCUMULATION"
+    elif score >= 4.0:
+        score_color = S_BLUE
+        score_label = "QUIET COIL"
+    else:
+        score_color = S_MUTED
+        score_label = "WATCH"
+
+    if rank == 1:
+        rank_bg = S_YELLOW
+        rank_fg = "#000"
+        border_color = S_YELLOW
+    elif rank <= 3:
+        rank_bg = S_BLUE
+        rank_fg = "#fff"
+        border_color = f"{S_BLUE}77"
+    else:
+        rank_bg = S_BORDER
+        rank_fg = S_TEXT
+        border_color = S_BORDER
+
+    Stealth = c["stealth"]["score"]
+    Coil = c["coil"]["score"]
+    Physics = c["physics"]["score"]
+
+    front_iv = c.get("front_iv", 0)
+    back_iv = c.get("back_iv", 0)
+    if front_iv > 0 and back_iv > 0:
+        term_ratio = front_iv / back_iv
+        if term_ratio >= 1.25:
+            term_label = "INVERTED 🔥"
+            term_color = S_RED
+        elif term_ratio >= 1.10:
+            term_label = "ELEVATED"
+            term_color = S_YELLOW
+        else:
+            term_label = "NORMAL"
+            term_color = S_DIM
+        term_str = f"{term_ratio:.2f}x ({term_label})"
+    else:
+        term_color = S_DIM
+        term_str = "—"
+
+    def fmt_pct(v):
+        return f"{v:+.1f}%" if v is not None else "—"
+
+    def fmt_prob(v):
+        return f"{v*100:.0f}%" if v else "—"
+
+    iv_display = c["iv"] * 100 if c["iv"] < 5 else c["iv"]
+    arrow = "↑" if c["side"] == "CALL" else "↓"
+    voi = c["volume"] / max(c["oi"], 1)
+    gamma_per_dollar = c["gamma"] / max(c["mark"], 0.01)
+
+    # Stealth indicator: high vol, flat price = the dream pre-breakout pattern
+    stealth_subs = c["stealth"]["subs"]
+    accumulation_score = stealth_subs.get("stealth_accumulation", 0)
+    if accumulation_score >= 8:
+        accum_badge = (
+            f'<span style="background:{S_GREEN}22; color:{S_GREEN};'
+            f' font-size:9px; font-weight:700; padding:3px 8px;'
+            f' border-radius:3px; margin-left:6px;">QUIET ACCUM</span>'
+        )
+    elif accumulation_score >= 5:
+        accum_badge = (
+            f'<span style="background:{S_YELLOW}22; color:{S_YELLOW};'
+            f' font-size:9px; font-weight:700; padding:3px 8px;'
+            f' border-radius:3px; margin-left:6px;">BUILDING</span>'
+        )
+    else:
+        accum_badge = ""
+
+    return (
+        f'<div style="background:{S_CARD}; border:1px solid {border_color};'
+        f' border-radius:12px; padding:16px; margin:10px 0; font-family:{S_FONT};">'
+        f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
+        f'<div>'
+        f'<span style="display:inline-block; background:{rank_bg}; color:{rank_fg};'
+        f' width:30px; height:30px; border-radius:6px; text-align:center; line-height:30px;'
+        f' font-size:13px; font-weight:800; margin-right:10px;">#{rank}</span>'
+        f'<span style="color:{S_TEXT}; font-size:24px; font-weight:900;">{c["symbol"]}</span>'
+        f'<span style="display:inline-block; background:{side_color}22; color:{side_color};'
+        f' font-size:11px; font-weight:800; padding:3px 8px; border-radius:4px;'
+        f' margin-left:10px;">{c["side"]}</span>'
+        f'<span style="color:{S_DIM}; font-size:13px; margin-left:10px;">'
+        f'{c["strike"]:,.1f} {c["expiration"]} ({c["dte"]}d)</span>'
+        f'{accum_badge}'
+        f'</div>'
+        f'<div style="text-align:right;">'
+        f'<div style="color:{score_color}; font-size:24px; font-weight:900;">{score:.2f}</div>'
+        f'<div style="color:{score_color}; font-size:10px; font-weight:700;'
+        f' letter-spacing:1px;">{score_label}</div>'
+        f'</div>'
+        f'</div>'
+        # Pillar bars (different from continuation mode)
+        f'<div style="display:flex; gap:14px; margin-bottom:12px; padding:10px;'
+        f' background:{S_BG}; border-radius:8px;">'
+        f'<div style="flex:1.5;">{_pillar_bar(Stealth, S_GREEN, "🥷 STEALTH FLOW")}</div>'
+        f'<div style="flex:1;">{_pillar_bar(Coil, S_YELLOW, "🌀 COIL SPRING")}</div>'
+        f'<div style="flex:0.7;">{_pillar_bar(Physics, S_BLUE, "⚡ PHYSICS")}</div>'
+        f'</div>'
+        # Pricing + Greeks row
+        f'<div style="display:flex; gap:10px; padding:10px 0;'
+        f' border-top:1px solid {S_BORDER}; border-bottom:1px solid {S_BORDER};">'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">PRICE</div>'
+        f'<div style="color:{S_TEXT}; font-size:15px; font-weight:700;">${c["mark"]:.2f}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">${c["cost"]:.0f}/contract</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">SPOT</div>'
+        f'<div style="color:{S_TEXT}; font-size:15px; font-weight:700;">${c["spot"]:.2f}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">strike {c["strike"]:.0f}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">5D / TODAY</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'{c["pct_5d"]:+.1f}% / {c["pct_today"]:+.1f}%</div>'
+        f'<div style="color:{S_GREEN if abs(c["pct_5d"])<5 else S_DIM}; font-size:10px;">'
+        f'{"QUIET" if abs(c["pct_5d"])<5 else "MOVING"}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">VOL / V/OI</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'{c["vol_vs_avg"]:.1f}x / {voi:.1f}x</div>'
+        f'<div style="color:{S_GREEN if c["vol_vs_avg"]>1.3 else S_DIM}; font-size:10px;">'
+        f'{"STOCK ACCUM" if c["vol_vs_avg"]>1.3 else "normal"}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">IV / TERM</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'{iv_display:.0f}%</div>'
+        f'<div style="color:{term_color}; font-size:10px;">{term_str}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">Δ / Γ/$</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'{c["delta"]:.2f} / {gamma_per_dollar:.3f}</div></div>'
+        f'</div>'
+        # Move-to-Nx ladder
+        f'<div style="margin-top:10px;">'
+        f'<div style="color:{S_DIM}; font-size:10px; font-weight:600;'
+        f' text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">'
+        f'IF the move comes → multiplier (probability via lognormal IV)</div>'
+        f'<div style="display:flex; gap:10px;">'
+        f'<div style="flex:1; text-align:center; background:{S_BG}; padding:8px;'
+        f' border-radius:6px;">'
+        f'<div style="color:{S_GREEN}; font-size:16px; font-weight:800;">3x</div>'
+        f'<div style="color:{S_TEXT}; font-size:13px; font-weight:700;">'
+        f'{arrow} {fmt_pct(c.get("pct_3x"))}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">prob {fmt_prob(c.get("prob_3x"))}</div></div>'
+        f'<div style="flex:1; text-align:center; background:{S_BG}; padding:8px;'
+        f' border-radius:6px;">'
+        f'<div style="color:{S_YELLOW}; font-size:16px; font-weight:800;">5x</div>'
+        f'<div style="color:{S_TEXT}; font-size:13px; font-weight:700;">'
+        f'{arrow} {fmt_pct(c.get("pct_5x"))}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">prob {fmt_prob(c.get("prob_5x"))}</div></div>'
+        f'<div style="flex:1; text-align:center; background:{S_BG}; padding:8px;'
+        f' border-radius:6px;">'
+        f'<div style="color:{S_RED}; font-size:16px; font-weight:800;">10x</div>'
+        f'<div style="color:{S_TEXT}; font-size:13px; font-weight:700;">'
+        f'{arrow} {fmt_pct(c.get("pct_10x"))}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">prob {fmt_prob(c.get("prob_10x"))}</div></div>'
+        f'</div></div>'
+        f'</div>'
+    )
+
+
+def pre_breakout_methodology_html():
+    """Explain pre-breakout methodology."""
+    return (
+        f'<div style="background:{S_CARD}; border:1px solid {S_GREEN}33;'
+        f' border-radius:8px; padding:14px 16px; margin:12px 0;'
+        f' font-family:{S_FONT};">'
+        f'<div style="color:{S_GREEN}; font-size:11px; font-weight:700;'
+        f' text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px;">'
+        f'Pre-Breakout — Catch the Setup BEFORE the Move</div>'
+        f'<div style="display:flex; gap:14px;">'
+        f'<div style="flex:1; padding-right:14px; border-right:1px solid {S_BORDER};">'
+        f'<div style="color:{S_GREEN}; font-size:12px; font-weight:700;'
+        f' margin-bottom:4px;">🥷 STEALTH FLOW (50%)</div>'
+        f'<div style="color:{S_MUTED}; font-size:11px; line-height:1.5;">'
+        f'Smart money positioning quietly. V/OI ratio + adjacent sweeps + side'
+        f' concentration + the killer signal: <b style="color:{S_TEXT};">stock'
+        f' volume up but price flat</b> = institutional accumulation.'
+        f'</div></div>'
+        f'<div style="flex:1; padding-right:14px; border-right:1px solid {S_BORDER};">'
+        f'<div style="color:{S_YELLOW}; font-size:12px; font-weight:700;'
+        f' margin-bottom:4px;">🌀 COIL SPRING (30%)</div>'
+        f'<div style="color:{S_MUTED}; font-size:11px; line-height:1.5;">'
+        f'Energy stored. Stock 5d move &lt; 8% (range compression), today &lt; 3%'
+        f' (catalyst hasn\'t fired), IV term inverted (event priced soon), tight'
+        f' bid-ask (real liquidity).'
+        f'</div></div>'
+        f'<div style="flex:1;">'
+        f'<div style="color:{S_BLUE}; font-size:12px; font-weight:700;'
+        f' margin-bottom:4px;">⚡ PHYSICS (20%)</div>'
+        f'<div style="color:{S_MUTED}; font-size:11px; line-height:1.5;">'
+        f'Same gamma convexity math. The contract has to be explosive when the'
+        f' move comes — sweet-zone delta + high gamma per dollar.'
+        f'</div></div>'
+        f'</div>'
+        f'<div style="color:{S_DIM}; font-size:10px; margin-top:10px;'
+        f' padding-top:8px; border-top:1px solid {S_BORDER};">'
+        f'<b>Hard filters:</b> Stock 5d move &gt; 10% = SKIP (already moved).'
+        f' Today &gt; 4% = SKIP (catalyst firing). IV &gt; 300% = SKIP (event priced).'
+        f' Lower hit rate than continuation, bigger payoff when right.'
+        f'</div></div>'
+    )

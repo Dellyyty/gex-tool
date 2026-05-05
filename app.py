@@ -118,8 +118,10 @@ _CONVEXITY_ERROR = None
 try:
     from ui_components import (
         convexity_hero_html, convexity_methodology_html, convexity_card_html,
+        pre_breakout_card_html, pre_breakout_methodology_html,
     )
     from convexity_hunter import scan_universe_v2
+    from pre_breakout import scan_universe_pre_breakout
 except Exception as _e:
     _CONVEXITY_AVAILABLE = False
     _CONVEXITY_ERROR = str(_e)
@@ -565,24 +567,44 @@ with tab_lottery:
                 unsafe_allow_html=True,
             )
 
-# --- Convexity Hunter Tab (V2) ---
+# --- Convexity Hunter Tab (V2 — with mode toggle) ---
 with tab_convex:
     if not _CONVEXITY_AVAILABLE:
         st.error(f"Convexity Hunter unavailable: {_CONVEXITY_ERROR}")
     else:
-        st.markdown(
-            f'<div style="color:#a1a1aa; font-size:13px; margin-bottom:12px; font-family:Inter,sans-serif;">'
-            f'<b style="color:#fafafa;">V2 — Physics-first.</b> Multiplicative score:'
-            f' Leverage (40%) × Smart Money (35%) × Catalyst (25%) using geometric mean.'
-            f' All three pillars must be strong. Solves "what % move makes this 3x/5x/10x"'
-            f' using gamma convexity, with implied probability via lognormal IV.'
-            f'</div>',
-            unsafe_allow_html=True,
+        # Mode selector — Continuation vs Pre-Breakout
+        cv_mode = st.radio(
+            "Hunt mode",
+            ["⚡ Continuation (in-progress moves)", "🥷 Pre-Breakout (stealth setups)"],
+            horizontal=True,
+            key="cv_mode",
+            label_visibility="collapsed",
         )
+        is_pre_breakout = "Pre-Breakout" in cv_mode
+
+        if is_pre_breakout:
+            st.markdown(
+                f'<div style="color:#a1a1aa; font-size:13px; margin-bottom:12px; font-family:Inter,sans-serif;">'
+                f'<b style="color:#22c55e;">Pre-Breakout — catch setups BEFORE the move.</b>'
+                f' Stealth Flow (50%) × Coil Spring (30%) × Physics (20%). Filters out tickers'
+                f' already up &gt;10% in 5d or &gt;4% today. Lower hit rate, bigger payoff.'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div style="color:#a1a1aa; font-size:13px; margin-bottom:12px; font-family:Inter,sans-serif;">'
+                f'<b style="color:#fafafa;">Continuation — moves already in progress.</b>'
+                f' Leverage (40%) × Smart Money (35%) × Catalyst (25%). Detects in-flight'
+                f' explosive moves — better hit rate, smaller upside since some move already happened.'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
         cf1, cf2, cf3, cf4, cf5 = st.columns([1, 1, 1, 1, 1.2])
         with cf1:
-            v2_min_score = st.slider("Min MLC", 3.0, 9.0, 5.0, 0.25, key="cv_min_score")
+            default_min = 4.0 if is_pre_breakout else 5.0
+            v2_min_score = st.slider("Min Score", 3.0, 9.0, default_min, 0.25, key="cv_min_score")
         with cf2:
             v2_max_dte = st.slider("Max DTE", 1, 30, 21, key="cv_max_dte")
         with cf3:
@@ -601,50 +623,68 @@ with tab_convex:
 
         col_btn2, col_info2 = st.columns([1, 4])
         with col_btn2:
-            run_v2 = st.button("⚡ HUNT CONVEXITY", key="cv_run", use_container_width=True)
+            btn_label = "🥷 FIND STEALTH" if is_pre_breakout else "⚡ HUNT CONVEXITY"
+            run_v2 = st.button(btn_label, key="cv_run", use_container_width=True)
         with col_info2:
+            mode_str = "Pre-Breakout" if is_pre_breakout else "Continuation"
             st.markdown(
                 f'<div style="color:#52525b; font-size:11px; padding-top:8px; font-family:Inter,sans-serif;">'
-                f'{len(v2_tickers)} tickers · uses Schwab Greeks (gamma, theta) · ~30-90s scan'
+                f'{len(v2_tickers)} tickers · {mode_str} mode · ~30-90s scan'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
-        if "convex_results" not in st.session_state:
-            st.session_state.convex_results = None
-            st.session_state.convex_scan_time = 0
-            st.session_state.convex_scanned_count = 0
+        # Separate session state per mode so switching doesn't clobber
+        results_key = "pre_breakout_results" if is_pre_breakout else "convex_results"
+        time_key = "pre_breakout_time" if is_pre_breakout else "convex_scan_time"
+        count_key = "pre_breakout_count" if is_pre_breakout else "convex_scanned_count"
+
+        if results_key not in st.session_state:
+            st.session_state[results_key] = None
+            st.session_state[time_key] = 0
+            st.session_state[count_key] = 0
 
         if run_v2 and DATA_SOURCE == "schwab":
-            progress_bar = st.progress(0, text="Initializing Convexity Hunter...")
+            progress_bar = st.progress(0, text=f"Initializing {mode_str} scan...")
             scan_start = time.time()
 
             def _v2_progress(done, total, sym):
                 progress_bar.progress(done / total, text=f"Analyzing {sym} ({done}/{total})")
 
             try:
-                results = scan_universe_v2(
-                    client,
-                    tickers=v2_tickers,
-                    max_dte=v2_max_dte,
-                    min_score=v2_min_score,
-                    max_premium=v2_max_premium,
-                    max_workers=6,
-                    progress_cb=_v2_progress,
-                )
-                st.session_state.convex_scan_time = time.time() - scan_start
-                progress_bar.progress(1.0, text=f"Done — {len(results)} convexity setups")
+                if is_pre_breakout:
+                    results = scan_universe_pre_breakout(
+                        client,
+                        tickers=v2_tickers,
+                        max_dte=v2_max_dte,
+                        min_score=v2_min_score,
+                        max_premium=v2_max_premium,
+                        max_workers=6,
+                        progress_cb=_v2_progress,
+                    )
+                else:
+                    results = scan_universe_v2(
+                        client,
+                        tickers=v2_tickers,
+                        max_dte=v2_max_dte,
+                        min_score=v2_min_score,
+                        max_premium=v2_max_premium,
+                        max_workers=6,
+                        progress_cb=_v2_progress,
+                    )
+                st.session_state[time_key] = time.time() - scan_start
+                progress_bar.progress(1.0, text=f"Done — {len(results)} setups")
                 time.sleep(0.5)
                 progress_bar.empty()
-                st.session_state.convex_results = results
-                st.session_state.convex_scanned_count = len(v2_tickers)
+                st.session_state[results_key] = results
+                st.session_state[count_key] = len(v2_tickers)
             except Exception as e:
                 progress_bar.empty()
                 st.error(f"Scan failed: {e}")
         elif run_v2 and DATA_SOURCE != "schwab":
-            st.warning("Convexity Hunter requires Schwab API.")
+            st.warning("Requires Schwab API data source.")
 
-        results = st.session_state.convex_results
+        results = st.session_state[results_key]
         if results is not None:
             filtered = [r for r in results if r["score"] >= v2_min_score]
             top_score = filtered[0]["score"] if filtered else 0
@@ -652,38 +692,51 @@ with tab_convex:
             st.markdown(
                 convexity_hero_html(
                     len(filtered),
-                    st.session_state.convex_scanned_count,
-                    st.session_state.convex_scan_time,
+                    st.session_state[count_key],
+                    st.session_state[time_key],
                     top_score,
                 ),
                 unsafe_allow_html=True,
             )
-            st.markdown(convexity_methodology_html(), unsafe_allow_html=True)
+
+            if is_pre_breakout:
+                st.markdown(pre_breakout_methodology_html(), unsafe_allow_html=True)
+            else:
+                st.markdown(convexity_methodology_html(), unsafe_allow_html=True)
 
             if filtered:
+                header_label = "TOP STEALTH SETUPS" if is_pre_breakout else "TOP CONVEXITY SETUPS"
                 st.markdown(
                     f'<div style="color:#a1a1aa; font-size:12px; text-transform:uppercase;'
                     f' letter-spacing:2px; margin:20px 0 8px; font-family:Inter,sans-serif;">'
-                    f'TOP CONVEXITY SETUPS</div>',
+                    f'{header_label}</div>',
                     unsafe_allow_html=True,
                 )
                 top_v2 = filtered[:v2_top_n]
-                cards_html = "".join(
-                    convexity_card_html(r, rank=i + 1) for i, r in enumerate(top_v2)
-                )
+                if is_pre_breakout:
+                    cards_html = "".join(
+                        pre_breakout_card_html(r, rank=i + 1) for i, r in enumerate(top_v2)
+                    )
+                else:
+                    cards_html = "".join(
+                        convexity_card_html(r, rank=i + 1) for i, r in enumerate(top_v2)
+                    )
                 wrapped = (
                     f'<div style="font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;">'
                     f'{cards_html}</div>'
                 )
-                st.components.v1.html(wrapped, height=len(top_v2) * 360 + 50, scrolling=False)
+                st.components.v1.html(wrapped, height=len(top_v2) * 380 + 50, scrolling=False)
         else:
+            empty_msg = ("Click <b>FIND STEALTH</b> to scan for pre-breakout setups"
+                         if is_pre_breakout else
+                         "Click <b>HUNT CONVEXITY</b> to scan for in-progress moves")
             st.markdown(
                 f'<div style="background:#0c0c0e; border:1px solid #1c1c1e;'
                 f' border-radius:12px; padding:32px; text-align:center; margin:16px 0;'
                 f' font-family:Inter,sans-serif;">'
-                f'<div style="color:#a1a1aa; font-size:16px;">Click <b>HUNT CONVEXITY</b> to run V2</div>'
+                f'<div style="color:#a1a1aa; font-size:16px;">{empty_msg}</div>'
                 f'<div style="color:#52525b; font-size:12px; margin-top:8px;">'
-                f'V2 uses gamma physics — different picks than V1. Run during market hours.</div></div>',
+                f'Switch modes anytime — separate caches keep both result sets.</div></div>',
                 unsafe_allow_html=True,
             )
 
