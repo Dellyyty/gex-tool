@@ -22,56 +22,254 @@ import time
 # ============================================================
 
 UNIVERSE = {
-    "Semis_AI_Hardware": [
-        "NVDA", "AMD", "AVGO", "SMCI", "ARM", "MU", "MRVL", "TSM", "INTC",
-        "ASML", "AMAT", "LRCX", "KLAC", "ON", "QCOM", "TXN", "MCHP", "ADI",
-        "WDC", "STX", "CRDO", "ALAB", "ASTS",
-    ],
-    "AI_Software": [
-        "PLTR", "SNOW", "MDB", "DDOG", "NET", "CRWD", "PATH", "AI", "BBAI",
-        "SOUN", "TEM", "DOCN", "PANW", "ZS", "S", "OKTA",
-    ],
-    "Crypto_Adjacent": [
-        "COIN", "MSTR", "MARA", "RIOT", "CLSK", "HOOD", "BITF", "HUT",
-        "WULF", "CIFR", "CORZ", "IREN",
-    ],
-    "Biotech_Pharma": [
-        "MRNA", "BNTX", "NVAX", "BIIB", "REGN", "VRTX", "GILD", "AMGN",
-        "CRSP", "EDIT", "NTLA", "BEAM", "SAVA", "OCGN", "SRPT", "PFE",
-        "LLY", "NVO", "ALNY", "MRK", "JNJ", "ABBV",
-    ],
-    "EV_Auto": [
-        "TSLA", "RIVN", "LCID", "NIO", "XPEV", "LI", "F", "GM", "FSR",
-        "QS", "CHPT", "BLNK",
-    ],
-    "Memes_Squeeze": [
-        "GME", "AMC", "BB", "KOSS", "BBBY", "ATER", "DJT", "RDDT",
-    ],
-    "Recent_M&A_Targets": [
-        "U", "RBLX", "PINS", "SNAP", "ROKU", "SHOP", "LYFT", "UBER",
-        "AFRM", "SOFI", "UPST", "RKT", "SQ", "PYPL",
-    ],
+    # === Mega caps and high-beta majors ===
     "Mega_Cap_High_Beta": [
         "TSLA", "NVDA", "META", "NFLX", "AAPL", "GOOGL", "AMZN", "MSFT",
-        "DIS", "BABA", "JD", "PDD",
+        "DIS", "AVGO", "ORCL", "CRM", "ADBE", "AMD", "QCOM",
     ],
+
+    # === Semiconductors — full ladder ===
+    "Semis_Mega": [
+        "NVDA", "AMD", "AVGO", "TSM", "ASML", "MU", "QCOM", "TXN", "INTC",
+    ],
+    "Semis_Mid": [
+        "SMCI", "ARM", "MRVL", "AMAT", "LRCX", "KLAC", "ON", "MCHP", "ADI",
+        "MPWR", "NXPI", "STM", "ENTG", "COHR",
+    ],
+    "Semis_Small_Niche": [
+        "WDC", "STX", "CRDO", "ALAB", "AEHR", "INDI", "POWI", "SITM",
+        "SLAB", "SWKS", "QRVO", "WOLF", "ACMR", "AMBA", "VECO", "ICHR",
+        "PI", "RMBS", "FORM", "ONTO", "CRUS", "DIOD", "KOPN",
+    ],
+
+    # === AI / data infra software ===
+    "AI_Software_Mega": [
+        "PLTR", "SNOW", "CRM", "ORCL",
+    ],
+    "AI_Software_Mid": [
+        "MDB", "DDOG", "NET", "CRWD", "PANW", "ZS", "S", "OKTA", "FTNT",
+        "GTLB", "ESTC", "CFLT", "MNDY", "TEAM", "WDAY",
+    ],
+    "AI_Pureplays_Small": [
+        "AI", "BBAI", "SOUN", "TEM", "PATH", "PRCH", "VRSN", "DOCN",
+        "INOD", "LMND", "NVTS", "GLBE", "RXRX", "CRNC",
+    ],
+
+    # === Crypto / mining / blockchain adjacent ===
+    "Crypto_Adjacent": [
+        "COIN", "MSTR", "MARA", "RIOT", "CLSK", "HOOD", "BITF", "HUT",
+        "WULF", "CIFR", "CORZ", "IREN", "BTBT", "GREE", "CAN", "BTDR",
+        "DGHI", "SOS", "NCTY", "BTCS", "EBON", "BFRG",
+    ],
+
+    # === Biotech — small/mid catalyst-driven (where SNDK-style moves live) ===
+    "Biotech_Mega": [
+        "LLY", "NVO", "JNJ", "MRK", "PFE", "ABBV", "AMGN", "GILD", "REGN",
+        "VRTX", "BIIB",
+    ],
+    "Biotech_Mid_Hot": [
+        "MRNA", "BNTX", "NVAX", "ALNY", "EXEL", "INCY", "BMRN", "NBIX",
+        "UTHR", "RPRX", "NEUR", "SAREPTA", "SRPT", "GH", "VEEV",
+    ],
+    "Biotech_Small_Catalyst": [
+        "CRSP", "EDIT", "NTLA", "BEAM", "VERV", "PRME", "SAVA", "OCGN",
+        "INSM", "ARWR", "RVMD", "RYTM", "VKTX", "MDGL", "KRYS", "IONS",
+        "PCVX", "ACAD", "DNLI", "MORF", "PTCT", "FOLD", "AXSM", "ARCT",
+        "BHVN", "DAWN", "TARS", "CRBU", "RNA", "AURA", "TVTX", "GERN",
+        "CVAC", "INVA", "HRMY", "VANI", "OPK", "INMD", "BCRX", "ANIP",
+    ],
+    "Biotech_Lottery": [
+        "SAVA", "AVTX", "NVAX", "OCGN", "ENVB", "CYTK", "PHIO", "ATAI",
+        "MNMD", "CMPS", "GHRS", "ATXS", "ABOS", "ADAG", "CABA", "TENX",
+        "EVAX", "VBLT", "INSE", "KZIA", "OST", "KMPB",
+    ],
+
+    # === EV / clean transport ===
+    "EV_Auto_Major": [
+        "TSLA", "F", "GM", "STLA", "TM", "RACE", "HMC",
+    ],
+    "EV_Pureplays": [
+        "RIVN", "LCID", "NIO", "XPEV", "LI", "ZK", "FSR", "WKHS", "MULN",
+        "GOEV", "NKLA", "FFIE", "BLNK", "EVGO", "CHPT", "ADSE",
+    ],
+    "EV_Battery_Lithium": [
+        "ALB", "SQM", "LTHM", "PLL", "LAC", "MP", "REE", "QS", "ENVX",
+        "FREY", "MVST", "LICY", "AMPX", "DRMA",
+    ],
+
+    # === Recent IPOs / spinoffs / SPAC-graduates (the SNDK pattern!) ===
+    "Recent_IPO_Spinoffs": [
+        "SNDK", "ARM", "CART", "BIRK", "RDDT", "GEHC", "KVUE", "SOLV",
+        "GTLB", "S", "TOST", "ABNB", "DASH", "RBLX", "RIVN", "AAOI",
+        "ASTS", "JOBY", "ACHR", "EVTL", "ESLT", "RUM", "BBAI", "STAA",
+    ],
+
+    # === Memes / squeeze / retail ===
+    "Memes_Squeeze": [
+        "GME", "AMC", "BB", "KOSS", "BBBY", "ATER", "DJT", "RDDT", "HKD",
+        "NEGG", "MMTLP", "AMTD", "WAVE", "MMAT", "BTU", "CRTD", "PRSO",
+    ],
+
+    # === M&A targets / takeover candidates ===
+    "Recent_MA_Targets": [
+        "U", "RBLX", "PINS", "SNAP", "ROKU", "ETSY", "EBAY", "PYPL",
+        "CMA", "FRC", "PACW", "WAL", "DKNG", "RKT", "OPEN", "Z", "ZG",
+        "COMP", "RDFN", "ACI", "KR", "CASY", "DG", "DLTR", "HOOD",
+    ],
+
+    # === Fintech / payments ===
+    "Fintech": [
+        "SQ", "PYPL", "SOFI", "AFRM", "UPST", "RKT", "OPEN", "LMND", "NU",
+        "INTR", "STNE", "PAGS", "MELI", "GLOB", "HOOD", "COIN", "NRDS",
+        "DAVE", "ROOT", "HIPO", "MBC", "FOUR", "FLYW",
+    ],
+
+    # === Software / SaaS — beyond AI labels ===
+    "Software_SaaS": [
+        "SHOP", "SQ", "ADBE", "INTU", "WDAY", "CRM", "NOW", "ADSK",
+        "ANSS", "PTC", "CDNS", "SNPS", "U", "TWLO", "FSLY", "DOCN",
+        "ESTC", "CFLT", "GTLB", "MNDY", "TEAM", "ASAN", "BOX", "DOCN",
+        "OLO", "BL", "BLKB", "FROG", "JAMF", "RNG", "ZM",
+    ],
+
+    # === Cybersecurity ===
+    "Cybersecurity": [
+        "PANW", "CRWD", "ZS", "S", "NET", "OKTA", "FTNT", "FFIV", "CYBR",
+        "QLYS", "VRNS", "TENB", "RPD", "CHKP", "OSPN", "SAIL",
+    ],
+
+    # === Cloud / data infra ===
+    "Cloud_Data_Infra": [
+        "DDOG", "MDB", "SNOW", "NET", "ESTC", "CFLT", "DOCN", "DBX", "BOX",
+        "PSTG", "NTNX", "AKAM", "EQIX", "DLR", "VRT",
+    ],
+
+    # === Quantum / advanced compute ===
+    "Quantum_Compute": [
+        "IONQ", "RGTI", "QBTS", "QUBT", "NNDM", "ARQQ", "QMCO",
+    ],
+
+    # === Nuclear / uranium / SMR ===
+    "Nuclear_Uranium": [
+        "CCJ", "UEC", "UUUU", "NXE", "LEU", "OKLO", "SMR", "NNE", "VST",
+        "TLN", "CEG", "BWXT", "URA", "URNM", "USA",
+    ],
+
+    # === Solar / clean energy ===
+    "Solar_Clean": [
+        "ENPH", "SEDG", "FSLR", "RUN", "ARRY", "NOVA", "MAXN", "CSIQ",
+        "JKS", "DQ", "SPWR", "SHLS", "STEM", "PLUG", "FCEL", "BE", "BLDP",
+        "BEEM", "AMPS",
+    ],
+
+    # === Space / aerospace / defense ===
+    "Space_Aerospace": [
+        "RKLB", "ASTS", "LUNR", "ASTR", "JOBY", "EVTL", "ACHR", "RDW",
+        "PL", "MNTS", "BA", "LMT", "RTX", "NOC", "GD", "HII", "TXT",
+        "TDG", "HEI", "AVAV", "KTOS", "BWXT",
+    ],
+
+    # === Cannabis ===
+    "Cannabis": [
+        "TLRY", "CGC", "CRON", "ACB", "SNDL", "MSOS", "GRWG", "VFF",
+        "OGI", "CURLF", "GTBIF", "VRNOF", "TCNNF", "AYRWF", "AAWH",
+    ],
+
+    # === China ADRs (volatile, options-active) ===
+    "China_ADRs": [
+        "BABA", "JD", "PDD", "BIDU", "NIO", "XPEV", "LI", "TME", "BILI",
+        "TAL", "EDU", "DIDI", "BEKE", "VIPS", "YMM", "TIGR", "FUTU",
+        "ATAT", "ZH", "MOMO", "WB", "DOYU", "HUYA",
+    ],
+
+    # === Travel / leisure / hospitality ===
+    "Travel_Leisure": [
+        "ABNB", "BKNG", "EXPE", "TRIP", "MAR", "HLT", "H", "WH", "IHG",
+        "CCL", "NCLH", "RCL", "VIK", "DAL", "AAL", "UAL", "LUV", "ALK",
+        "JBLU", "SAVE", "ULCC", "MESA",
+    ],
+
+    # === Restaurants / consumer hot ===
+    "Restaurants_Consumer": [
+        "MCD", "SBUX", "CMG", "DASH", "UBER", "SHAK", "WING", "CAVA",
+        "TXRH", "CAKE", "EAT", "DPZ", "PZZA", "QSR", "WEN", "JACK",
+        "DRI", "LOCO", "BJ", "BROS", "PLAY", "FWRG", "DNUT",
+    ],
+
+    # === Gaming / sports betting ===
+    "Gaming_Betting": [
+        "DKNG", "PENN", "BYD", "MGM", "WYNN", "LVS", "CZR", "FLUT",
+        "RSI", "GENI", "SRAD", "SEAT", "MNKD", "MNRD", "EDR", "MSGS",
+    ],
+
+    # === Real estate / mortgage ===
+    "Real_Estate_Hot": [
+        "RKT", "OPEN", "Z", "ZG", "COMP", "RDFN", "EXPI", "PSA", "EXR",
+        "AMT", "SBAC", "CCI", "DLR", "EQIX", "INVH", "AMH", "EQR", "AVB",
+    ],
+
+    # === Energy / oil / gas (volatile) ===
+    "Energy_Volatile": [
+        "OXY", "DVN", "MRO", "FANG", "PXD", "MPC", "SLB", "HAL", "BKR",
+        "OII", "WTI", "RIG", "BORR", "TUSK", "TDW", "CRC", "PR", "MGY",
+        "CEIX", "BTU", "ARCH", "AMR", "HCC", "FCEL",
+    ],
+
+    # === Industrials / cyclicals ===
+    "Industrial_Cyclical": [
+        "BA", "CAT", "DE", "HON", "GE", "MMM", "ETN", "EMR", "ITW",
+        "PH", "ROK", "CMI", "PCAR", "LUV", "XPO", "CHRW", "JBHT", "ARCB",
+        "HUBG", "WERN", "LSTR", "GBX", "TRN",
+    ],
+
+    # === Speculative lottery / former hype ===
     "Speculative_Lottery": [
         "SPCE", "NKLA", "PLUG", "FCEL", "BLDP", "WKHS", "GOEV", "MULN",
-        "SIRI", "SNDL",
+        "SIRI", "SNDL", "FFIE", "GREE", "AMPX", "DOMA", "REKR", "UAVS",
+        "NXTC", "GMVD", "BBLG", "AGRI", "CRTD", "HCWB",
     ],
-    "Industrial_Hot": [
-        "BA", "CAT", "UBER", "DAL", "AAL", "UAL", "CCL", "NCLH",
+
+    # === 3D printing / advanced manufacturing ===
+    "3D_Printing_AdvMfg": [
+        "DDD", "SSYS", "DM", "VLD", "MKFG", "NNDM", "VJET", "XMTR", "ARCT",
+        "SPNS", "AOSL", "VLO", "CDXC",
     ],
-    "Energy_Volatile": [
-        "OXY", "DVN", "MRO", "FANG", "PXD", "MPC", "SLB", "HAL",
-    ],
-    "Recent_IPO_Volatile": [
-        "ARM", "CART", "BIRK", "INSTA", "RDDT", "ASTR", "JOBY", "EVTL",
+
+    # === ETFs that move (leveraged + thematic) ===
+    "ETF_Leveraged_Thematic": [
+        "TQQQ", "SQQQ", "SOXL", "SOXS", "TNA", "TZA", "FAS", "FAZ",
+        "LABU", "LABD", "TMF", "TMV", "BOIL", "KOLD", "JNUG", "JDST",
+        "GUSH", "DRIP", "SPXL", "SPXS", "URTY", "SRTY", "WEBL", "WEBS",
+        "ARKK", "ARKG", "ARKF", "ARKW", "BITX", "BITI",
     ],
 }
 
 # Flattened deduplicated list
 ALL_TICKERS = sorted(set(t for sector in UNIVERSE.values() for t in sector))
+
+
+# Curated sector presets for quick-select
+SECTOR_PRESETS = {
+    "All sectors": list(UNIVERSE.keys()),
+    "Niche / small-cap only (skip mega caps)": [
+        s for s in UNIVERSE.keys()
+        if s not in ("Mega_Cap_High_Beta", "Semis_Mega", "AI_Software_Mega",
+                     "Biotech_Mega", "EV_Auto_Major")
+    ],
+    "Lottery focus (biotech + crypto + memes + IPOs)": [
+        "Biotech_Small_Catalyst", "Biotech_Lottery", "Crypto_Adjacent",
+        "Memes_Squeeze", "Recent_IPO_Spinoffs", "Speculative_Lottery",
+        "Quantum_Compute", "Cannabis",
+    ],
+    "Hot momentum (semis + AI + nuclear + space)": [
+        "Semis_Small_Niche", "Semis_Mid", "AI_Pureplays_Small",
+        "Nuclear_Uranium", "Space_Aerospace", "Quantum_Compute",
+    ],
+    "Catalyst-driven (biotech + earnings + China)": [
+        "Biotech_Small_Catalyst", "Biotech_Mid_Hot", "Biotech_Lottery",
+        "China_ADRs", "Recent_IPO_Spinoffs",
+    ],
+}
 
 
 # ============================================================

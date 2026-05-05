@@ -108,7 +108,7 @@ try:
         lottery_header_html, lottery_disclaimer_html,
         lottery_contract_card_html, lottery_budget_summary_html,
     )
-    from lottery_scanner import scan_universe, ALL_TICKERS, UNIVERSE
+    from lottery_scanner import scan_universe, ALL_TICKERS, UNIVERSE, SECTOR_PRESETS
 except Exception as _e:
     _LOTTERY_AVAILABLE = False
     _LOTTERY_ERROR = str(_e)
@@ -445,8 +445,16 @@ with tab_lottery:
             unsafe_allow_html=True,
         )
 
+        # Sector preset
+        lot_preset = st.selectbox(
+            "Quick-select preset",
+            list(SECTOR_PRESETS.keys()),
+            index=2,
+            key="lot_preset",
+        )
+
         # --- Filter controls ---
-        fc1, fc2, fc3, fc4, fc5 = st.columns([1, 1, 1, 1, 1.2])
+        fc1, fc2, fc3, fc4, fc5 = st.columns([1, 1, 1, 1, 1.4])
         with fc1:
             min_score = st.slider("Min Score", 4.0, 9.0, 6.0, 0.5, key="lot_min_score")
         with fc2:
@@ -457,9 +465,9 @@ with tab_lottery:
             budget = st.slider("Budget", 100, 2000, 500, 50, key="lot_budget")
         with fc5:
             sectors = st.multiselect(
-                "Sectors",
+                "Sectors (override preset)",
                 list(UNIVERSE.keys()),
-                default=list(UNIVERSE.keys()),
+                default=SECTOR_PRESETS[lot_preset],
                 key="lot_sectors",
             )
 
@@ -601,7 +609,15 @@ with tab_convex:
                 unsafe_allow_html=True,
             )
 
-        cf1, cf2, cf3, cf4, cf5 = st.columns([1, 1, 1, 1, 1.2])
+        # Sector preset dropdown (above the sliders)
+        cv_preset = st.selectbox(
+            "Quick-select preset",
+            list(SECTOR_PRESETS.keys()),
+            index=2,  # Default: "Lottery focus"
+            key="cv_preset",
+        )
+
+        cf1, cf2, cf3, cf4, cf5 = st.columns([1, 1, 1, 1, 1.4])
         with cf1:
             default_min = 4.0 if is_pre_breakout else 5.0
             v2_min_score = st.slider("Min Score", 3.0, 9.0, default_min, 0.25, key="cv_min_score")
@@ -610,12 +626,12 @@ with tab_convex:
         with cf3:
             v2_max_premium = st.slider("Max $/contract", 50, 400, 200, 10, key="cv_max_prem") / 100.0
         with cf4:
-            v2_top_n = st.slider("Show top N", 5, 50, 15, 5, key="cv_top_n")
+            v2_top_n = st.slider("Show top N", 5, 50, 20, 5, key="cv_top_n")
         with cf5:
             v2_sectors = st.multiselect(
-                "Sectors",
+                "Sectors (override preset)",
                 list(UNIVERSE.keys()),
-                default=list(UNIVERSE.keys()),
+                default=SECTOR_PRESETS[cv_preset],
                 key="cv_sectors",
             )
 
