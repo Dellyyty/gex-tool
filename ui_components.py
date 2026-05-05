@@ -2098,3 +2098,271 @@ def lottery_budget_summary_html(contracts, budget=500):
         f' ${budget} budget</div>'
         f'</div>'
     )
+
+
+# ========== CONVEXITY HUNTER (V2) TAB ==========
+
+def convexity_hero_html(num_results, num_scanned, scan_time, top_score):
+    """Hero card with V2 branding — emphasize physics-first approach."""
+    if num_results == 0:
+        return (
+            f'<div style="background:{S_CARD}; border:1px solid {S_BORDER};'
+            f' border-radius:12px; padding:32px; text-align:center; margin:16px 0;'
+            f' font-family:{S_FONT};">'
+            f'<div style="color:{S_MUTED}; font-size:18px; font-weight:600;">'
+            f'No qualifying convexity setups</div>'
+            f'<div style="color:{S_DIM}; font-size:13px; margin-top:8px;">'
+            f'Scanned {num_scanned} tickers in {scan_time:.1f}s. Lower min score'
+            f' or run during market hours.</div></div>'
+        )
+
+    if top_score >= 7.5:
+        glow = S_GREEN
+        label = "ELITE CONVEXITY DETECTED"
+    elif top_score >= 6.5:
+        glow = S_YELLOW
+        label = "STRONG SETUPS"
+    elif top_score >= 5.5:
+        glow = S_BLUE
+        label = "MODERATE SETUPS"
+    else:
+        glow = S_MUTED
+        label = "WEAK MARKET"
+
+    return (
+        f'<div style="text-align:center; margin:16px 0; font-family:{S_FONT};">'
+        f'<div style="display:inline-block; background:{S_CARD};'
+        f' border:1px solid {glow}55; border-radius:14px;'
+        f' padding:20px 40px; box-shadow:0 0 30px {glow}33;">'
+        f'<div style="color:{glow}; font-size:11px; font-weight:700;'
+        f' text-transform:uppercase; letter-spacing:2px;">Convexity Hunter</div>'
+        f'<div style="color:{S_DIM}; font-size:10px; font-weight:500;'
+        f' letter-spacing:1px; margin-top:2px;">'
+        f'Leverage × Smart Money × Catalyst — geometric mean</div>'
+        f'<div style="color:{S_TEXT}; font-size:36px; font-weight:900; margin:6px 0;'
+        f' letter-spacing:-1px;">{num_results} setups</div>'
+        f'<div style="color:{glow}; font-size:14px; font-weight:700;'
+        f' margin-bottom:10px;">{label}</div>'
+        f'<div style="display:flex; justify-content:center; gap:24px; margin-top:12px;'
+        f' padding-top:12px; border-top:1px solid {S_BORDER};">'
+        f'<div><div style="color:{S_DIM}; font-size:10px; text-transform:uppercase;'
+        f' letter-spacing:1px;">Top MLC</div>'
+        f'<div style="color:{glow}; font-size:18px; font-weight:800;">'
+        f'{top_score:.2f}/10</div></div>'
+        f'<div><div style="color:{S_DIM}; font-size:10px; text-transform:uppercase;'
+        f' letter-spacing:1px;">Scanned</div>'
+        f'<div style="color:{S_TEXT}; font-size:18px; font-weight:800;">'
+        f'{num_scanned} tickers</div></div>'
+        f'<div><div style="color:{S_DIM}; font-size:10px; text-transform:uppercase;'
+        f' letter-spacing:1px;">Time</div>'
+        f'<div style="color:{S_TEXT}; font-size:18px; font-weight:800;">'
+        f'{scan_time:.1f}s</div></div>'
+        f'</div></div></div>'
+    )
+
+
+def convexity_methodology_html():
+    """Explain the 3-pillar methodology."""
+    return (
+        f'<div style="background:{S_CARD}; border:1px solid {S_BLUE}33;'
+        f' border-radius:8px; padding:14px 16px; margin:12px 0;'
+        f' font-family:{S_FONT};">'
+        f'<div style="color:{S_BLUE}; font-size:11px; font-weight:700;'
+        f' text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px;">'
+        f'Methodology — Why $100 → $4,000 in a Week Happens</div>'
+        f'<div style="display:flex; gap:14px;">'
+        f'<div style="flex:1; padding-right:14px; border-right:1px solid {S_BORDER};">'
+        f'<div style="color:{S_GREEN}; font-size:12px; font-weight:700;'
+        f' margin-bottom:4px;">⚡ LEVERAGE (40%)</div>'
+        f'<div style="color:{S_MUTED}; font-size:11px; line-height:1.5;">'
+        f'The contract physics. Gamma per dollar of premium = real explosive metric.'
+        f' Sweet zone: delta 0.10-0.30. Solves "what % move triples this contract?"'
+        f' using 2nd-order Taylor (P + DΔS + ½GΔS²).'
+        f'</div></div>'
+        f'<div style="flex:1; padding-right:14px; border-right:1px solid {S_BORDER};">'
+        f'<div style="color:{S_YELLOW}; font-size:12px; font-weight:700;'
+        f' margin-bottom:4px;">💰 SMART MONEY (35%)</div>'
+        f'<div style="color:{S_MUTED}; font-size:11px; line-height:1.5;">'
+        f'Who is buying. V/OI on this strike, V/OI on adjacent strikes (sweep'
+        f' detection), side concentration, IV term structure inversion'
+        f' (front &gt;&gt; back = event priced in), block-size proxy.'
+        f'</div></div>'
+        f'<div style="flex:1;">'
+        f'<div style="color:{S_RED}; font-size:12px; font-weight:700;'
+        f' margin-bottom:4px;">🔥 CATALYST (25%)</div>'
+        f'<div style="color:{S_MUTED}; font-size:11px; line-height:1.5;">'
+        f'The why. Directional momentum (5d + today), volume surge vs 30-day,'
+        f' earnings within DTE, range break (out of recent boring zone). Without'
+        f' a catalyst, gamma alone won\'t fire.'
+        f'</div></div>'
+        f'</div>'
+        f'<div style="color:{S_DIM}; font-size:10px; margin-top:10px;'
+        f' padding-top:8px; border-top:1px solid {S_BORDER};">'
+        f'Composite uses geometric mean (L^0.40 × S^0.35 × C^0.25) — multiplicative,'
+        f' so all three pillars must be strong. A 10 in one pillar can\'t compensate'
+        f' for a 2 in another. This kills false positives.'
+        f'</div></div>'
+    )
+
+
+def _pillar_bar(score, color, label):
+    """Render a 0-10 horizontal bar for one pillar."""
+    pct = (score / 10) * 100
+    return (
+        f'<div style="margin-bottom:6px;">'
+        f'<div style="display:flex; justify-content:space-between; margin-bottom:2px;">'
+        f'<span style="color:{color}; font-size:10px; font-weight:700;'
+        f' letter-spacing:0.5px;">{label}</span>'
+        f'<span style="color:{color}; font-size:11px; font-weight:800;">'
+        f'{score:.1f}</span></div>'
+        f'<div style="background:{S_BORDER}; height:6px; border-radius:3px; overflow:hidden;">'
+        f'<div style="background:{color}; width:{pct}%; height:100%;'
+        f' border-radius:3px;"></div></div></div>'
+    )
+
+
+def convexity_card_html(c, rank):
+    """Render a single V2 contract card with 3-pillar gauges + move ladder."""
+    side_color = S_GREEN if c["side"] == "CALL" else S_RED
+    score = c["score"]
+
+    if score >= 7.5:
+        score_color = S_GREEN
+        score_label = "ELITE"
+    elif score >= 6.5:
+        score_color = S_YELLOW
+        score_label = "STRONG"
+    elif score >= 5.5:
+        score_color = S_BLUE
+        score_label = "DECENT"
+    else:
+        score_color = S_MUTED
+        score_label = "WATCH"
+
+    if rank == 1:
+        rank_bg = S_YELLOW
+        rank_fg = "#000"
+        border_color = S_YELLOW
+    elif rank <= 3:
+        rank_bg = S_BLUE
+        rank_fg = "#fff"
+        border_color = f"{S_BLUE}77"
+    else:
+        rank_bg = S_BORDER
+        rank_fg = S_TEXT
+        border_color = S_BORDER
+
+    L = c["leverage"]["score"]
+    S = c["smart_money"]["score"]
+    Cat = c["catalyst"]["score"]
+
+    # IV term structure indicator
+    front_iv = c.get("front_iv", 0)
+    back_iv = c.get("back_iv", 0)
+    if front_iv > 0 and back_iv > 0:
+        term_ratio = front_iv / back_iv
+        if term_ratio >= 1.25:
+            term_label = "INVERTED 🔥"
+            term_color = S_RED
+        elif term_ratio >= 1.10:
+            term_label = "ELEVATED"
+            term_color = S_YELLOW
+        else:
+            term_label = "NORMAL"
+            term_color = S_DIM
+        term_str = f"{term_ratio:.2f}x ({term_label})"
+    else:
+        term_color = S_DIM
+        term_str = "—"
+
+    # Move-to-Nx ladder (the killer feature)
+    def fmt_pct(v):
+        return f"{v:+.1f}%" if v is not None else "—"
+
+    def fmt_prob(v):
+        return f"{v*100:.0f}%" if v else "—"
+
+    iv_display = c["iv"] * 100 if c["iv"] < 5 else c["iv"]
+    gamma_per_dollar = c["gamma"] / max(c["mark"], 0.01)
+
+    # Direction arrow for move
+    arrow = "↑" if c["side"] == "CALL" else "↓"
+
+    return (
+        f'<div style="background:{S_CARD}; border:1px solid {border_color};'
+        f' border-radius:12px; padding:16px; margin:10px 0; font-family:{S_FONT};">'
+        # Top header row
+        f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
+        f'<div>'
+        f'<span style="display:inline-block; background:{rank_bg}; color:{rank_fg};'
+        f' width:30px; height:30px; border-radius:6px; text-align:center; line-height:30px;'
+        f' font-size:13px; font-weight:800; margin-right:10px;">#{rank}</span>'
+        f'<span style="color:{S_TEXT}; font-size:24px; font-weight:900;">{c["symbol"]}</span>'
+        f'<span style="display:inline-block; background:{side_color}22; color:{side_color};'
+        f' font-size:11px; font-weight:800; padding:3px 8px; border-radius:4px;'
+        f' margin-left:10px;">{c["side"]}</span>'
+        f'<span style="color:{S_DIM}; font-size:13px; margin-left:10px;">'
+        f'{c["strike"]:,.1f} {c["expiration"]} ({c["dte"]}d)</span>'
+        f'</div>'
+        f'<div style="text-align:right;">'
+        f'<div style="color:{score_color}; font-size:24px; font-weight:900;">{score:.2f}</div>'
+        f'<div style="color:{score_color}; font-size:10px; font-weight:700;'
+        f' letter-spacing:1px;">{score_label} MLC</div>'
+        f'</div>'
+        f'</div>'
+        # Pillar bars (the V2 signature)
+        f'<div style="display:flex; gap:14px; margin-bottom:12px; padding:10px;'
+        f' background:{S_BG}; border-radius:8px;">'
+        f'<div style="flex:1;">{_pillar_bar(L, S_GREEN, "⚡ LEVERAGE")}</div>'
+        f'<div style="flex:1;">{_pillar_bar(S, S_YELLOW, "💰 SMART $")}</div>'
+        f'<div style="flex:1;">{_pillar_bar(Cat, S_RED, "🔥 CATALYST")}</div>'
+        f'</div>'
+        # Pricing + Greeks row
+        f'<div style="display:flex; gap:10px; padding:10px 0;'
+        f' border-top:1px solid {S_BORDER}; border-bottom:1px solid {S_BORDER};">'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">PRICE</div>'
+        f'<div style="color:{S_TEXT}; font-size:15px; font-weight:700;">${c["mark"]:.2f}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">${c["cost"]:.0f}/contract</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">SPOT</div>'
+        f'<div style="color:{S_TEXT}; font-size:15px; font-weight:700;">${c["spot"]:.2f}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">strike {c["strike"]:.0f}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">Δ / Γ</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'{c["delta"]:.2f} / {c["gamma"]:.3f}</div>'
+        f'<div style="color:{S_GREEN}; font-size:10px;">Γ/$ {gamma_per_dollar:.3f}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">IV / V/OI</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'{iv_display:.0f}% / {c["volume"]/max(c["oi"],1):.1f}x</div>'
+        f'<div style="color:{term_color}; font-size:10px;">Term {term_str}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">STOCK</div>'
+        f'<div style="color:{S_GREEN if c["pct_5d"] > 0 else S_RED}; font-size:14px; font-weight:700;">'
+        f'{c["pct_5d"]:+.1f}% 5d</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">vol {c["vol_vs_avg"]:.1f}x</div></div>'
+        f'</div>'
+        # Move-to-Nx ladder (the killer feature)
+        f'<div style="margin-top:10px;">'
+        f'<div style="color:{S_DIM}; font-size:10px; font-weight:600;'
+        f' text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">'
+        f'Move Required → Multiplier (Implied Probability within DTE)</div>'
+        f'<div style="display:flex; gap:10px;">'
+        f'<div style="flex:1; text-align:center; background:{S_BG}; padding:8px;'
+        f' border-radius:6px;">'
+        f'<div style="color:{S_GREEN}; font-size:16px; font-weight:800;">3x</div>'
+        f'<div style="color:{S_TEXT}; font-size:13px; font-weight:700;">'
+        f'{arrow} {fmt_pct(c.get("pct_3x"))}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">prob {fmt_prob(c.get("prob_3x"))}</div></div>'
+        f'<div style="flex:1; text-align:center; background:{S_BG}; padding:8px;'
+        f' border-radius:6px;">'
+        f'<div style="color:{S_YELLOW}; font-size:16px; font-weight:800;">5x</div>'
+        f'<div style="color:{S_TEXT}; font-size:13px; font-weight:700;">'
+        f'{arrow} {fmt_pct(c.get("pct_5x"))}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">prob {fmt_prob(c.get("prob_5x"))}</div></div>'
+        f'<div style="flex:1; text-align:center; background:{S_BG}; padding:8px;'
+        f' border-radius:6px;">'
+        f'<div style="color:{S_RED}; font-size:16px; font-weight:800;">10x</div>'
+        f'<div style="color:{S_TEXT}; font-size:13px; font-weight:700;">'
+        f'{arrow} {fmt_pct(c.get("pct_10x"))}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">prob {fmt_prob(c.get("prob_10x"))}</div></div>'
+        f'</div></div>'
+        f'</div>'
+    )

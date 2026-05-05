@@ -112,6 +112,17 @@ try:
 except Exception as _e:
     _LOTTERY_AVAILABLE = False
     _LOTTERY_ERROR = str(_e)
+
+_CONVEXITY_AVAILABLE = True
+_CONVEXITY_ERROR = None
+try:
+    from ui_components import (
+        convexity_hero_html, convexity_methodology_html, convexity_card_html,
+    )
+    from convexity_hunter import scan_universe_v2
+except Exception as _e:
+    _CONVEXITY_AVAILABLE = False
+    _CONVEXITY_ERROR = str(_e)
 from config import (
     DATA_SOURCE, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM,
     REFRESH_INTERVAL_SECONDS, MAX_DTE, STRIKE_INCREMENT,
@@ -305,8 +316,8 @@ if len(st.session_state.premium_history) > 500:
     st.session_state.premium_history = st.session_state.premium_history[-500:]
 
 # === TABBED LAYOUT ===
-tab_gex, tab_0dte_gex, tab_top_gex, tab_lottery, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
-    "GEX Dashboard", "0DTE GEX", "Top GEX", "Lottery Scanner", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
+tab_gex, tab_0dte_gex, tab_top_gex, tab_lottery, tab_convex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
+    "GEX Dashboard", "0DTE GEX", "Top GEX", "Lottery Scanner", "Convexity Hunter", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
 ])
 
 # --- GEX Dashboard Tab (original content) ---
@@ -551,6 +562,128 @@ with tab_lottery:
                 f'<div style="color:#a1a1aa; font-size:16px;">Click <b>RUN SCAN</b> to find lottery setups</div>'
                 f'<div style="color:#52525b; font-size:12px; margin-top:8px;">'
                 f'Scan completes in ~30-60s. Results cached until you scan again.</div></div>',
+                unsafe_allow_html=True,
+            )
+
+# --- Convexity Hunter Tab (V2) ---
+with tab_convex:
+    if not _CONVEXITY_AVAILABLE:
+        st.error(f"Convexity Hunter unavailable: {_CONVEXITY_ERROR}")
+    else:
+        st.markdown(
+            f'<div style="color:#a1a1aa; font-size:13px; margin-bottom:12px; font-family:Inter,sans-serif;">'
+            f'<b style="color:#fafafa;">V2 — Physics-first.</b> Multiplicative score:'
+            f' Leverage (40%) × Smart Money (35%) × Catalyst (25%) using geometric mean.'
+            f' All three pillars must be strong. Solves "what % move makes this 3x/5x/10x"'
+            f' using gamma convexity, with implied probability via lognormal IV.'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        cf1, cf2, cf3, cf4, cf5 = st.columns([1, 1, 1, 1, 1.2])
+        with cf1:
+            v2_min_score = st.slider("Min MLC", 3.0, 9.0, 5.0, 0.25, key="cv_min_score")
+        with cf2:
+            v2_max_dte = st.slider("Max DTE", 1, 30, 21, key="cv_max_dte")
+        with cf3:
+            v2_max_premium = st.slider("Max $/contract", 50, 400, 200, 10, key="cv_max_prem") / 100.0
+        with cf4:
+            v2_top_n = st.slider("Show top N", 5, 50, 15, 5, key="cv_top_n")
+        with cf5:
+            v2_sectors = st.multiselect(
+                "Sectors",
+                list(UNIVERSE.keys()),
+                default=list(UNIVERSE.keys()),
+                key="cv_sectors",
+            )
+
+        v2_tickers = sorted(set(t for s in v2_sectors for t in UNIVERSE.get(s, [])))
+
+        col_btn2, col_info2 = st.columns([1, 4])
+        with col_btn2:
+            run_v2 = st.button("⚡ HUNT CONVEXITY", key="cv_run", use_container_width=True)
+        with col_info2:
+            st.markdown(
+                f'<div style="color:#52525b; font-size:11px; padding-top:8px; font-family:Inter,sans-serif;">'
+                f'{len(v2_tickers)} tickers · uses Schwab Greeks (gamma, theta) · ~30-90s scan'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+        if "convex_results" not in st.session_state:
+            st.session_state.convex_results = None
+            st.session_state.convex_scan_time = 0
+            st.session_state.convex_scanned_count = 0
+
+        if run_v2 and DATA_SOURCE == "schwab":
+            progress_bar = st.progress(0, text="Initializing Convexity Hunter...")
+            scan_start = time.time()
+
+            def _v2_progress(done, total, sym):
+                progress_bar.progress(done / total, text=f"Analyzing {sym} ({done}/{total})")
+
+            try:
+                results = scan_universe_v2(
+                    client,
+                    tickers=v2_tickers,
+                    max_dte=v2_max_dte,
+                    min_score=v2_min_score,
+                    max_premium=v2_max_premium,
+                    max_workers=6,
+                    progress_cb=_v2_progress,
+                )
+                st.session_state.convex_scan_time = time.time() - scan_start
+                progress_bar.progress(1.0, text=f"Done — {len(results)} convexity setups")
+                time.sleep(0.5)
+                progress_bar.empty()
+                st.session_state.convex_results = results
+                st.session_state.convex_scanned_count = len(v2_tickers)
+            except Exception as e:
+                progress_bar.empty()
+                st.error(f"Scan failed: {e}")
+        elif run_v2 and DATA_SOURCE != "schwab":
+            st.warning("Convexity Hunter requires Schwab API.")
+
+        results = st.session_state.convex_results
+        if results is not None:
+            filtered = [r for r in results if r["score"] >= v2_min_score]
+            top_score = filtered[0]["score"] if filtered else 0
+
+            st.markdown(
+                convexity_hero_html(
+                    len(filtered),
+                    st.session_state.convex_scanned_count,
+                    st.session_state.convex_scan_time,
+                    top_score,
+                ),
+                unsafe_allow_html=True,
+            )
+            st.markdown(convexity_methodology_html(), unsafe_allow_html=True)
+
+            if filtered:
+                st.markdown(
+                    f'<div style="color:#a1a1aa; font-size:12px; text-transform:uppercase;'
+                    f' letter-spacing:2px; margin:20px 0 8px; font-family:Inter,sans-serif;">'
+                    f'TOP CONVEXITY SETUPS</div>',
+                    unsafe_allow_html=True,
+                )
+                top_v2 = filtered[:v2_top_n]
+                cards_html = "".join(
+                    convexity_card_html(r, rank=i + 1) for i, r in enumerate(top_v2)
+                )
+                wrapped = (
+                    f'<div style="font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;">'
+                    f'{cards_html}</div>'
+                )
+                st.components.v1.html(wrapped, height=len(top_v2) * 360 + 50, scrolling=False)
+        else:
+            st.markdown(
+                f'<div style="background:#0c0c0e; border:1px solid #1c1c1e;'
+                f' border-radius:12px; padding:32px; text-align:center; margin:16px 0;'
+                f' font-family:Inter,sans-serif;">'
+                f'<div style="color:#a1a1aa; font-size:16px;">Click <b>HUNT CONVEXITY</b> to run V2</div>'
+                f'<div style="color:#52525b; font-size:12px; margin-top:8px;">'
+                f'V2 uses gamma physics — different picks than V1. Run during market hours.</div></div>',
                 unsafe_allow_html=True,
             )
 
