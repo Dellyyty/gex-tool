@@ -97,6 +97,8 @@ from ui_components import (
     zero_gamma_explanation_html,
     dte0_gex_header_html, dte0_gex_stats_html, dte0_gex_vs_all_html,
     top_gex_header_html, top_gex_strike_card_html,
+    lottery_header_html, lottery_disclaimer_html,
+    lottery_contract_card_html, lottery_budget_summary_html,
 )
 from config import (
     DATA_SOURCE, DEFAULT_STRIKES_ABOVE_ATM, DEFAULT_STRIKES_BELOW_ATM,
@@ -291,8 +293,8 @@ if len(st.session_state.premium_history) > 500:
     st.session_state.premium_history = st.session_state.premium_history[-500:]
 
 # === TABBED LAYOUT ===
-tab_gex, tab_0dte_gex, tab_top_gex, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
-    "GEX Dashboard", "0DTE GEX", "Top GEX", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
+tab_gex, tab_0dte_gex, tab_top_gex, tab_lottery, tab_signal, tab_scanner, tab_brrrr, tab_factor2, tab_zgamma = st.tabs([
+    "GEX Dashboard", "0DTE GEX", "Top GEX", "Lottery Scanner", "Close Direction", "Contract Scanner", "BRRRR", "Factor 2", "0 Gamma"
 ])
 
 # --- GEX Dashboard Tab (original content) ---
@@ -400,6 +402,144 @@ with tab_top_gex:
             '<div style="color:#a1a1aa; font-size:18px;">No 0DTE GEX data available</div>'
             '<div style="color:#52525b; font-size:13px; margin-top:8px;">'
             'Market may be closed or no same-day expiry available</div></div>',
+            unsafe_allow_html=True,
+        )
+
+# --- Lottery Scanner Tab ---
+with tab_lottery:
+    from lottery_scanner import scan_universe, ALL_TICKERS, UNIVERSE
+
+    st.markdown(
+        f'<div style="color:#a1a1aa; font-size:13px; margin-bottom:12px; font-family:Inter,sans-serif;">'
+        f'Scans <b style="color:#fafafa;">{len(ALL_TICKERS)} tickers</b> across biotech, semis, AI, '
+        f'M&amp;A targets, memes, and high-beta names. Hunts $50-$150 contracts (0-14 DTE) showing '
+        f'the unusual-flow pattern that often precedes 10x-50x runs (like SNDK).'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # --- Filter controls ---
+    fc1, fc2, fc3, fc4, fc5 = st.columns([1, 1, 1, 1, 1.2])
+    with fc1:
+        min_score = st.slider("Min Score", 4.0, 9.0, 6.0, 0.5, key="lot_min_score")
+    with fc2:
+        max_dte = st.slider("Max DTE", 1, 30, 14, key="lot_max_dte")
+    with fc3:
+        max_premium = st.slider("Max $/contract", 50, 400, 200, 10, key="lot_max_prem") / 100.0
+    with fc4:
+        budget = st.slider("Budget", 100, 2000, 500, 50, key="lot_budget")
+    with fc5:
+        sectors = st.multiselect(
+            "Sectors",
+            list(UNIVERSE.keys()),
+            default=list(UNIVERSE.keys()),
+            key="lot_sectors",
+        )
+
+    # Build filtered ticker list from selected sectors
+    filtered_tickers = sorted(set(t for s in sectors for t in UNIVERSE.get(s, [])))
+
+    col_btn, col_info = st.columns([1, 4])
+    with col_btn:
+        run_scan = st.button("🎰 RUN SCAN", key="lot_run", use_container_width=True)
+    with col_info:
+        st.markdown(
+            f'<div style="color:#52525b; font-size:11px; padding-top:8px; font-family:Inter,sans-serif;">'
+            f'{len(filtered_tickers)} tickers selected · scan takes ~30-60s · uses Schwab live data'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    # Cache scan results in session state
+    if "lottery_results" not in st.session_state:
+        st.session_state.lottery_results = None
+        st.session_state.lottery_scan_time = 0
+        st.session_state.lottery_scanned_count = 0
+
+    if run_scan and DATA_SOURCE == "schwab":
+        progress_bar = st.progress(0, text="Initializing scan...")
+        scan_start = time.time()
+
+        def _progress(done, total, sym):
+            pct = done / total
+            progress_bar.progress(pct, text=f"Scanning {sym} ({done}/{total})")
+
+        try:
+            results = scan_universe(
+                client,
+                tickers=filtered_tickers,
+                max_dte=max_dte,
+                min_score=min_score,
+                max_premium=max_premium,
+                max_workers=6,
+                progress_cb=_progress,
+            )
+            scan_elapsed = time.time() - scan_start
+            progress_bar.progress(1.0, text=f"Done — {len(results)} qualifying contracts found")
+            time.sleep(0.5)
+            progress_bar.empty()
+
+            st.session_state.lottery_results = results
+            st.session_state.lottery_scan_time = scan_elapsed
+            st.session_state.lottery_scanned_count = len(filtered_tickers)
+        except Exception as e:
+            progress_bar.empty()
+            st.error(f"Scan failed: {e}")
+    elif run_scan and DATA_SOURCE != "schwab":
+        st.warning("Lottery Scanner requires Schwab API data source.")
+
+    # Display cached results
+    results = st.session_state.lottery_results
+    if results is not None:
+        # Re-filter cached results by current min_score (allows tweaking without re-scan)
+        filtered_results = [r for r in results if r["score"] >= min_score]
+        top_score = filtered_results[0]["score"] if filtered_results else 0
+
+        st.markdown(
+            lottery_header_html(
+                len(filtered_results),
+                st.session_state.lottery_scanned_count,
+                st.session_state.lottery_scan_time,
+                top_score,
+            ),
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(lottery_disclaimer_html(), unsafe_allow_html=True)
+
+        if filtered_results:
+            # Budget allocation summary
+            st.markdown(
+                lottery_budget_summary_html(filtered_results, budget=budget),
+                unsafe_allow_html=True,
+            )
+
+            # Top 20 ranked cards
+            st.markdown(
+                f'<div style="color:#a1a1aa; font-size:12px; text-transform:uppercase;'
+                f' letter-spacing:2px; margin:20px 0 8px; font-family:Inter,sans-serif;">'
+                f'TOP RANKED CONTRACTS</div>',
+                unsafe_allow_html=True,
+            )
+
+            top_results = filtered_results[:20]
+            all_cards = "".join(
+                lottery_contract_card_html(r, rank=i + 1)
+                for i, r in enumerate(top_results)
+            )
+            wrapped = (
+                f'<div style="font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;">'
+                f'{all_cards}</div>'
+            )
+            st.components.v1.html(wrapped, height=len(top_results) * 280 + 50, scrolling=False)
+    else:
+        st.markdown(
+            f'<div style="background:#0c0c0e; border:1px solid #1c1c1e;'
+            f' border-radius:12px; padding:32px; text-align:center; margin:16px 0;'
+            f' font-family:Inter,sans-serif;">'
+            f'<div style="color:#a1a1aa; font-size:16px;">Click <b>RUN SCAN</b> to find lottery setups</div>'
+            f'<div style="color:#52525b; font-size:12px; margin-top:8px;">'
+            f'Scan completes in ~30-60s. Results cached until you scan again.</div></div>',
             unsafe_allow_html=True,
         )
 

@@ -1813,3 +1813,288 @@ def top_gex_strike_card_html(s, max_vol):
         f'</div>'
         f'</div>'
     )
+
+
+# ========== LOTTERY SCANNER TAB ==========
+
+def lottery_header_html(num_results, num_scanned, scan_time, top_score):
+    """Hero summary for the lottery scanner."""
+    if num_results == 0:
+        return (
+            f'<div style="background:{S_CARD}; border:1px solid {S_BORDER};'
+            f' border-radius:12px; padding:32px; text-align:center; margin:16px 0;'
+            f' font-family:{S_FONT};">'
+            f'<div style="color:{S_MUTED}; font-size:18px; font-weight:600;">'
+            f'No qualifying contracts found</div>'
+            f'<div style="color:{S_DIM}; font-size:13px; margin-top:8px;">'
+            f'Scanned {num_scanned} tickers in {scan_time:.1f}s. Try lowering min score'
+            f' or running during market hours for better data.</div></div>'
+        )
+
+    if top_score >= 8:
+        glow_color = S_GREEN
+        intensity = "STRONG SETUPS DETECTED"
+    elif top_score >= 7:
+        glow_color = S_YELLOW
+        intensity = "MODERATE SETUPS"
+    else:
+        glow_color = S_BLUE
+        intensity = "WEAK MARKET"
+
+    return (
+        f'<div style="text-align:center; margin:16px 0; font-family:{S_FONT};">'
+        f'<div style="display:inline-block; background:{S_CARD};'
+        f' border:1px solid {glow_color}55; border-radius:14px;'
+        f' padding:20px 40px; box-shadow:0 0 30px {glow_color}22;">'
+        f'<div style="color:{glow_color}; font-size:11px; font-weight:700;'
+        f' text-transform:uppercase; letter-spacing:2px;">Lottery Scanner</div>'
+        f'<div style="color:{S_TEXT}; font-size:36px; font-weight:900; margin:6px 0;'
+        f' letter-spacing:-1px;">{num_results} contracts</div>'
+        f'<div style="color:{glow_color}; font-size:14px; font-weight:700;'
+        f' margin-bottom:10px;">{intensity}</div>'
+        f'<div style="display:flex; justify-content:center; gap:24px; margin-top:12px;'
+        f' padding-top:12px; border-top:1px solid {S_BORDER};">'
+        f'<div><div style="color:{S_DIM}; font-size:10px; text-transform:uppercase;'
+        f' letter-spacing:1px;">Top Score</div>'
+        f'<div style="color:{glow_color}; font-size:18px; font-weight:800;">'
+        f'{top_score:.1f}/10</div></div>'
+        f'<div><div style="color:{S_DIM}; font-size:10px; text-transform:uppercase;'
+        f' letter-spacing:1px;">Scanned</div>'
+        f'<div style="color:{S_TEXT}; font-size:18px; font-weight:800;">'
+        f'{num_scanned} tickers</div></div>'
+        f'<div><div style="color:{S_DIM}; font-size:10px; text-transform:uppercase;'
+        f' letter-spacing:1px;">Time</div>'
+        f'<div style="color:{S_TEXT}; font-size:18px; font-weight:800;">'
+        f'{scan_time:.1f}s</div></div>'
+        f'</div></div></div>'
+    )
+
+
+def lottery_disclaimer_html():
+    """Important disclaimer about lottery tickets."""
+    return (
+        f'<div style="background:{S_CARD}; border:1px solid {S_ORANGE}33;'
+        f' border-radius:8px; padding:12px 16px; margin:12px 0;'
+        f' font-family:{S_FONT};">'
+        f'<div style="color:{S_ORANGE}; font-size:11px; font-weight:700;'
+        f' text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px;">'
+        f'⚠ Pattern Match — Not Probability</div>'
+        f'<div style="color:{S_MUTED}; font-size:12px; line-height:1.5;">'
+        f'Score = strength of setup match (V/OI, IV, momentum, position). It is NOT'
+        f' "% chance to pay off." Most lottery tickets expire worthless. Position size'
+        f' so total spend on these is &le; loss tolerance. Targets shown are rough'
+        f' Black-Scholes-ish estimates assuming X% underlying move within DTE.'
+        f'</div></div>'
+    )
+
+
+def lottery_contract_card_html(c, rank):
+    """Render a single ranked lottery contract card."""
+    side_color = S_GREEN if c["side"] == "CALL" else S_RED
+    score = c["score"]
+
+    if score >= 8.5:
+        score_color = S_GREEN
+        score_label = "ELITE"
+    elif score >= 7.5:
+        score_color = S_YELLOW
+        score_label = "STRONG"
+    elif score >= 6.5:
+        score_color = S_BLUE
+        score_label = "DECENT"
+    else:
+        score_color = S_MUTED
+        score_label = "WATCH"
+
+    if rank == 1:
+        rank_bg = S_YELLOW
+        rank_fg = "#000"
+        border_color = S_YELLOW
+    elif rank <= 3:
+        rank_bg = S_BLUE
+        rank_fg = "#fff"
+        border_color = f"{S_BLUE}77"
+    else:
+        rank_bg = S_BORDER
+        rank_fg = S_TEXT
+        border_color = S_BORDER
+
+    voi = c["volume"] / max(c["oi"], 1) if c["oi"] > 0 else float('inf')
+    voi_str = f"{voi:.1f}x" if voi != float('inf') else "NEW"
+
+    spot_dist = c["strike"] - c["spot"]
+    spot_pct = (spot_dist / c["spot"] * 100) if c["spot"] else 0
+
+    # Targets
+    t5 = c.get("target_5pct", 0)
+    t10 = c.get("target_10pct", 0)
+    t20 = c.get("target_20pct", 0)
+    cost = c["cost"]
+    mult_5 = t5 / cost if cost else 0
+    mult_10 = t10 / cost if cost else 0
+    mult_20 = t20 / cost if cost else 0
+
+    # IV display (already normalized to 0-5 scale where 1=100%)
+    iv_display = c["iv"] * 100 if c["iv"] < 5 else c["iv"]
+
+    # Factor breakdown
+    f = c.get("factors", {})
+    factor_pills = ""
+    factor_labels = {
+        "voi": "V/OI",
+        "iv_extreme": "IV",
+        "stock_momentum": "MOM",
+        "stock_volume": "VOL",
+        "otm_sweet": "OTM",
+        "side_skew": "SKEW",
+        "premium_fit": "$",
+        "liquidity": "LIQ",
+    }
+    for key, label in factor_labels.items():
+        val = f.get(key, 0)
+        c_color = S_GREEN if val >= 7 else S_YELLOW if val >= 5 else S_RED if val >= 3 else S_DIM
+        factor_pills += (
+            f'<span style="display:inline-block; background:{c_color}22;'
+            f' color:{c_color}; font-size:9px; font-weight:700; padding:2px 6px;'
+            f' margin-right:4px; border-radius:3px;">{label} {val}</span>'
+        )
+
+    return (
+        f'<div style="background:{S_CARD}; border:1px solid {border_color};'
+        f' border-radius:12px; padding:16px; margin:10px 0; font-family:{S_FONT};">'
+        # Top row: rank, ticker, side, expiration, score
+        f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">'
+        f'<div>'
+        f'<span style="display:inline-block; background:{rank_bg}; color:{rank_fg};'
+        f' width:30px; height:30px; border-radius:6px; text-align:center; line-height:30px;'
+        f' font-size:13px; font-weight:800; margin-right:10px;">#{rank}</span>'
+        f'<span style="color:{S_TEXT}; font-size:24px; font-weight:900;">{c["symbol"]}</span>'
+        f'<span style="display:inline-block; background:{side_color}22; color:{side_color};'
+        f' font-size:11px; font-weight:800; padding:3px 8px; border-radius:4px;'
+        f' margin-left:10px;">{c["side"]}</span>'
+        f'<span style="color:{S_DIM}; font-size:13px; margin-left:10px;">'
+        f'{c["strike"]:,.1f} {c["expiration"]} ({c["dte"]}d)</span>'
+        f'</div>'
+        f'<div style="text-align:right;">'
+        f'<div style="color:{score_color}; font-size:24px; font-weight:900;">{score:.1f}</div>'
+        f'<div style="color:{score_color}; font-size:10px; font-weight:700;'
+        f' letter-spacing:1px;">{score_label}</div>'
+        f'</div>'
+        f'</div>'
+        # Pricing row
+        f'<div style="display:flex; gap:14px; padding:10px 0;'
+        f' border-top:1px solid {S_BORDER}; border-bottom:1px solid {S_BORDER};">'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">PRICE</div>'
+        f'<div style="color:{S_TEXT}; font-size:16px; font-weight:700;">${c["mark"]:.2f}</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">${cost:.0f}/contract</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">SPOT / STRIKE</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'${c["spot"]:.2f}</div>'
+        f'<div style="color:{side_color}; font-size:10px;">{spot_pct:+.1f}% to strike</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">V / OI</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'{c["volume"]:,} / {c["oi"]:,}</div>'
+        f'<div style="color:{S_GREEN if voi != float("inf") and voi >= 1 else S_DIM}; font-size:10px;">'
+        f'{voi_str}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">IV / DELTA</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">'
+        f'{iv_display:.0f}%</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">Δ {c["delta"]:.2f}</div></div>'
+        f'<div style="flex:1;"><div style="color:{S_DIM}; font-size:10px;">STOCK 5D</div>'
+        f'<div style="color:{S_GREEN if c["pct_5d"] > 0 else S_RED}; font-size:14px; font-weight:700;">'
+        f'{c["pct_5d"]:+.1f}%</div>'
+        f'<div style="color:{S_DIM}; font-size:10px;">Vol {c["vol_vs_avg"]:.1f}x avg</div></div>'
+        f'</div>'
+        # Targets row
+        f'<div style="display:flex; gap:10px; padding:10px 0;'
+        f' border-bottom:1px solid {S_BORDER};">'
+        f'<div style="flex:1; text-align:center;">'
+        f'<div style="color:{S_DIM}; font-size:10px;">5% MOVE</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">${t5:.0f}</div>'
+        f'<div style="color:{S_GREEN}; font-size:10px;">{mult_5:.1f}x</div></div>'
+        f'<div style="flex:1; text-align:center;">'
+        f'<div style="color:{S_DIM}; font-size:10px;">10% MOVE</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">${t10:.0f}</div>'
+        f'<div style="color:{S_GREEN}; font-size:10px;">{mult_10:.1f}x</div></div>'
+        f'<div style="flex:1; text-align:center;">'
+        f'<div style="color:{S_DIM}; font-size:10px;">20% MOVE</div>'
+        f'<div style="color:{S_TEXT}; font-size:14px; font-weight:700;">${t20:.0f}</div>'
+        f'<div style="color:{S_GREEN}; font-size:10px;">{mult_20:.1f}x</div></div>'
+        f'</div>'
+        # Factor pills
+        f'<div style="margin-top:10px;">{factor_pills}</div>'
+        f'</div>'
+    )
+
+
+def lottery_budget_summary_html(contracts, budget=500):
+    """Show how to allocate $500 across the top picks."""
+    if not contracts:
+        return ""
+
+    # Naive allocation: spread budget across top picks proportionally to score
+    top_picks = contracts[:8]
+    total_score = sum(c["score"] for c in top_picks)
+    if total_score == 0:
+        return ""
+
+    allocations = []
+    remaining = budget
+    for c in top_picks:
+        target_alloc = (c["score"] / total_score) * budget
+        n_contracts = max(1, int(target_alloc / c["cost"]))
+        cost = n_contracts * c["cost"]
+        if cost > remaining:
+            n_contracts = max(0, int(remaining / c["cost"]))
+            cost = n_contracts * c["cost"]
+        if n_contracts > 0:
+            allocations.append({
+                "symbol": c["symbol"],
+                "side": c["side"],
+                "strike": c["strike"],
+                "n": n_contracts,
+                "cost": cost,
+                "score": c["score"],
+            })
+            remaining -= cost
+
+    if not allocations:
+        return ""
+
+    rows = ""
+    total_spent = 0
+    for a in allocations:
+        side_color = S_GREEN if a["side"] == "CALL" else S_RED
+        rows += (
+            f'<tr>'
+            f'<td style="padding:6px 8px; color:{S_TEXT}; font-weight:700;">{a["symbol"]}</td>'
+            f'<td style="padding:6px 8px; color:{side_color}; font-weight:600;">{a["side"]}</td>'
+            f'<td style="padding:6px 8px; color:{S_TEXT};">{a["strike"]:,.0f}</td>'
+            f'<td style="padding:6px 8px; color:{S_TEXT};">{a["n"]}x</td>'
+            f'<td style="padding:6px 8px; color:{S_TEXT};">${a["cost"]:.0f}</td>'
+            f'<td style="padding:6px 8px; color:{S_YELLOW}; font-weight:700;">{a["score"]:.1f}</td>'
+            f'</tr>'
+        )
+        total_spent += a["cost"]
+
+    return (
+        f'<div style="background:{S_CARD}; border:1px solid {S_BORDER};'
+        f' border-radius:8px; padding:14px 16px; margin:12px 0; font-family:{S_FONT};">'
+        f'<div style="color:{S_DIM}; font-size:11px; font-weight:700;'
+        f' text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px;">'
+        f'$500 Sample Allocation (proportional to score)</div>'
+        f'<table style="width:100%; border-collapse:collapse; font-size:13px;">'
+        f'<thead><tr style="border-bottom:1px solid {S_BORDER};">'
+        f'<th style="text-align:left; padding:6px 8px; color:{S_DIM};">Symbol</th>'
+        f'<th style="text-align:left; padding:6px 8px; color:{S_DIM};">Side</th>'
+        f'<th style="text-align:left; padding:6px 8px; color:{S_DIM};">Strike</th>'
+        f'<th style="text-align:left; padding:6px 8px; color:{S_DIM};">Qty</th>'
+        f'<th style="text-align:left; padding:6px 8px; color:{S_DIM};">Cost</th>'
+        f'<th style="text-align:left; padding:6px 8px; color:{S_DIM};">Score</th>'
+        f'</tr></thead><tbody>{rows}</tbody></table>'
+        f'<div style="text-align:right; color:{S_TEXT}; font-size:13px; margin-top:8px;'
+        f' padding-top:8px; border-top:1px solid {S_BORDER};">'
+        f'Total: <b style="color:{S_GREEN};">${total_spent:.0f}</b> /'
+        f' ${budget} budget</div>'
+        f'</div>'
+    )
